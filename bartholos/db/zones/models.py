@@ -10,7 +10,7 @@ from mudforge.utils import lazy_property
 
 class ZoneDB(AutoProxyObject):
     __proxy_family__ = "zones"
-    __defaultclasspath__ = "bartholos.db.objects.zones.DefaultZone"
+    __defaultclasspath__ = "bartholos.db.zones.zones.DefaultZone"
     __applabel__ = "objects"
 
     objects = ZoneDBManager()

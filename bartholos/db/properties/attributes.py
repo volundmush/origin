@@ -11,6 +11,8 @@ class AttributeHandler:
         if found := self.obj.attr_data.filter(category=category, name=key).first():
             found.value = value
             found.save(update_fields=["value"])
+        else:
+            self.obj.attr_data.create(category=category, name=key, value=value)
 
     async def remove(self, key: str, category: str = ""):
         if found := self.obj.attr_data.filter(category=category, name=key).first():

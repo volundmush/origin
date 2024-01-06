@@ -23,7 +23,7 @@ class ObjectDB(AutoProxyObject):
     lock_data = models.JSONField(blank=False, null=True, default=dict)
 
     in_zone = models.ForeignKey(
-        "objects.ZoneDB",
+        "zones.ZoneDB",
         null=True,
         blank=False,
         related_name="contents",

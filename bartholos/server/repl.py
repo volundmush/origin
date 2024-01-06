@@ -1,5 +1,5 @@
 import sys
-import code
+
 import time
 import mudforge
 import bartholos
@@ -7,6 +7,9 @@ import traceback
 from dataclasses import dataclass, field
 from rich.highlighter import ReprHighlighter
 from rich.text import Text
+
+from aioconsole.console import AsynchronousConsole
+
 
 from mudforge.game_session import (
     ClientHello,
@@ -51,7 +54,7 @@ class PythonRepresentation:
         await sess.send_text(out)
 
 
-class PythonParser(SessionParser, code.InteractiveConsole):
+class PythonParser(SessionParser, AsynchronousConsole):
     """
     Implements a Python REPL interpreter for developers.
     Based on Evennia's own rendition.
@@ -65,10 +68,27 @@ class PythonParser(SessionParser, code.InteractiveConsole):
         def write(self, string):
             self.parser.py_buffer += string
 
+    class FakeStreamWriter:
+        def __init__(self, output_callback):
+            self.output_callback = output_callback
+
+        async def write(self, data):
+            # When something is written, pass it to the output callback
+            await self.output_callback(data)
+
+        async def drain(self):
+            # Flushing the buffer can be a no-op if there's no actual I/O
+            pass
+
     def __init__(self, session, priority: bool = True):
         SessionParser.__init__(self, session, priority)
-        code.InteractiveConsole.__init__(self, locals=self.get_locals())
-        self.fake_std = self.FakeStd(self, session)
+        # Create a fake stream writer to handle writes
+        self.fake_stream = self.FakeStreamWriter(self.append_output)
+
+        # Initialize AsynchronousConsole with the fake streams
+        AsynchronousConsole.__init__(
+            self, locals=self.get_locals(), streams=(self.fake_stream, self.fake_stream)
+        )
         self.py_buffer = ""
 
     def get_locals(self) -> dict[str, "any"]:
@@ -78,23 +98,18 @@ class PythonParser(SessionParser, code.InteractiveConsole):
         """Don't send to stderr, send to self.caller."""
         self.py_buffer += string
 
-    def push(self, line):
-        """Push some code, whether complete or not."""
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
+    async def append_output(self, data: str):
+        self.py_buffer += data
 
-        sys.stdout = self.fake_std
-        sys.stderr = self.fake_std
-        result = None
+    async def flush(self):
+        pass
 
+    async def push(self, line):
+        # No need to replace sys.stdout and sys.stderr if we're using fake streams
         try:
-            result = super().push(line)
+            result = await super().push(line)
         except Exception as err:
-            self.write(traceback.format_exc())
-        finally:
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-
+            await self.handle_output(traceback.format_exc())
         return result
 
     async def on_start(self):
@@ -128,7 +143,7 @@ class PythonParser(SessionParser, code.InteractiveConsole):
         out = PythonRepresentation(text, prefix=">>>")
         await self.session.outgoing_queue.put(out)
         t0 = time.time()
-        results = self.push(text)
+        results = await self.push(text)
         t1 = time.time()
         out = PythonRepresentation(self.py_buffer.rstrip(), runtime=t1 - t0)
         await self.session.outgoing_queue.put(out)
