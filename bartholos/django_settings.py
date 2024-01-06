@@ -16,20 +16,23 @@ DATABASES = {
     }
 }
 
-INSTALLED_APPS.extend([
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.admindocs",
-    "django.contrib.flatpages",
-    "django.contrib.sites",
-    "django.contrib.staticfiles",
-    "bartholos.db.idmapper",
-    "bartholos.db.autoproxy",
-    "bartholos.db.objects",
-    "bartholos.db.properties",
-    "bartholos.db.users",
-    "bartholos.db.players"
-])
+INSTALLED_APPS.extend(
+    [
+        "django.contrib.auth",
+        "django.contrib.contenttypes",
+        "django.contrib.sessions",
+        "django.contrib.admindocs",
+        "django.contrib.flatpages",
+        "django.contrib.sites",
+        "django.contrib.staticfiles",
+        "bartholos.db.idmapper",
+        "bartholos.db.autoproxy",
+        "bartholos.db.objects",
+        "bartholos.db.properties",
+        "bartholos.db.users",
+        "bartholos.db.players",
+        "bartholos.db.zones",
+    ]
+)
 
 AUTH_USER_MODEL = "users.UserDB"

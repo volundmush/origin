@@ -1,10 +1,12 @@
-import time
 from django.db import models
-from enum import IntEnum
+from django.contrib.contenttypes.fields import GenericRelation
 
-import mudforge
+from bartholos.db.idmapper.models import SharedMemoryModel
 from bartholos.db.autoproxy.models import AutoProxyObject
 from bartholos.db.objects.managers import ObjectDBManager
+
+from bartholos.db.properties.attributes import AttributeHandler
+from mudforge.utils import lazy_property
 
 
 class ObjectDB(AutoProxyObject):
@@ -13,73 +15,56 @@ class ObjectDB(AutoProxyObject):
     __applabel__ = "objects"
 
     objects = ObjectDBManager()
-    generation = models.BigIntegerField(null=False, blank=False, default=lambda: int(time.time()))
 
-    keywords = models.JSONField(blank=False, null=False, default=list)
+    generation = models.BigIntegerField(null=False, blank=False)
+
     name = models.CharField(blank=False, null=True, max_length=255)
 
     lock_data = models.JSONField(blank=False, null=True, default=dict)
 
-    location = models.ForeignKey("self", null=True, on_delete=models.SET_NULL, blank=False, related_name="contents")
-    room = models.ForeignKey("objects.RoomDB", null=True, on_delete=models.SET_NULL, related_name="contents")
+    in_zone = models.ForeignKey(
+        "objects.ZoneDB",
+        null=True,
+        blank=False,
+        related_name="contents",
+        on_delete=models.CASCADE,
+    )
 
-    # If location is not null, and room is null, the object is in 'location's inventory.
-    # location_meta can specify things like which said inventory.
-    location_meta = models.PositiveSmallIntegerField(default=0)
+    attr_data = GenericRelation("properties.Attribute", related_name="objects")
 
+    @property
+    def dbref(self):
+        return f"#{self.id}"
 
-class RoomDB(AutoProxyObject):
-    __proxy_family__ = "rooms"
-    __defaultclasspath__ = "bartholos.db.objects.rooms.DefaultRoom"
-    __applabel__ = "objects"
+    @property
+    def objid(self):
+        return f"{self.dbref}:{self.generation}"
 
-    objects = RoomDBManager()
+    def __str__(self):
+        return self.name or f"Object {self.objid}"
 
-    zone = models.ForeignKey(ObjectDB, related_name="rooms", on_delete=models.CASCADE)
-    x = models.BigIntegerField(null=False, blank=False, default=0)
-    y = models.BigIntegerField(null=False, blank=False, default=0)
-    z = models.BigIntegerField(null=False, blank=False, default=0)
+    def __repr__(self):
+        return f"<{self.__class__.__name__} ({self.id}): {self}>"
 
-    name = models.CharField(blank=False, null=True, max_length=255)
-
-    description = models.TextField(blank=False, null=True)
-
-    class Meta:
-        unique_together = (("zone", "x", "y", "z"), )
-
-
-class Dir(IntEnum):
-    NORTH = 0
-    EAST = 1
-    SOUTH = 2
-    WEST = 3
-    UP = 4
-    DOWN = 5
-    NORTHWEST = 6
-    NORTHEAST = 7
-    SOUTHEAST = 8
-    SOUTHWEST = 9
+    @lazy_property
+    def attributes(self):
+        return AttributeHandler(self)
 
 
-class ExitDB(AutoProxyObject):
-    __proxy_family__ = "exits"
-    __defaultclasspath__ = "bartholos.db.objects.exits.DefaultExit"
-    __applabel__ = "objects"
-
-    objects = ExitDBManager()
-
-    room = models.ForeignKey(RoomDB, related_name="exits", on_delete=models.CASCADE)
-
-    class DirectionChoices(models.IntegerChoices):
-        NORTH = Dir.NORTH.value
-        EAST = Dir.EAST.value
-        SOUTH = Dir.SOUTH.value
-        WEST = Dir.WEST.value
-        UP = Dir.UP.value
-        DOWN = Dir.DOWN.value
-        NORTHWEST = Dir.NORTHWEST.value
-        NORTHEAST = Dir.NORTHEAST.value
-        SOUTHEAST = Dir.SOUTHEAST.value
-        SOUTHWEST = Dir.SOUTHWEST.value
-
-    direction = models.PositiveSmallIntegerField(choices=DirectionChoices.choices)
+class Inventory(SharedMemoryModel):
+    id = models.OneToOneField(
+        ObjectDB,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name="inventory_data",
+    )
+    holder = models.ForeignKey(
+        ObjectDB,
+        on_delete=models.CASCADE,
+        null=False,
+        blank=False,
+        related_name="inventory",
+    )
+    # Special metadata describing how the object is in the inventory.
+    # This can be used for things like inventory pockets, or equipment slots.
+    data = models.JSONField(blank=False, null=False, default=dict)

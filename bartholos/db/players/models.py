@@ -2,6 +2,9 @@ from django.db import models
 from mudforge.utils import utcnow
 from bartholos.db.autoproxy.models import AutoProxyObject
 from bartholos.db.players.managers import PlayviewDBManager
+from django.contrib.contenttypes.fields import GenericRelation
+from bartholos.db.properties.attributes import AttributeHandler
+from mudforge.utils import lazy_property
 
 
 class UserPlaytime(models.Model):
@@ -88,3 +91,9 @@ class PlayviewDB(AutoProxyObject):
 
     last_active = models.DateTimeField(null=False, blank=False, default=utcnow)
     date_created = models.DateTimeField(null=False, blank=False, default=utcnow)
+
+    attr_data = GenericRelation("properties.Attribute", related_name="playviews")
+
+    @lazy_property
+    def attributes(self):
+        return AttributeHandler(self)

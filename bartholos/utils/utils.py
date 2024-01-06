@@ -1,3 +1,11 @@
+import logging
+
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email as django_validate_email
+
+from mudforge.utils import to_str
+
+import bartholos
 
 
 def dbref(inp, reqhash=True):
@@ -17,7 +25,11 @@ def dbref(inp, reqhash=True):
     if reqhash:
         num = (
             int(inp.lstrip("#"))
-            if (isinstance(inp, str) and inp.startswith("#") and inp.lstrip("#").isdigit())
+            if (
+                isinstance(inp, str)
+                and inp.startswith("#")
+                and inp.lstrip("#").isdigit()
+            )
             else None
         )
         return num if isinstance(num, int) and num > 0 else None
@@ -26,3 +38,58 @@ def dbref(inp, reqhash=True):
         return int(inp) if inp.isdigit() and int(inp) > 0 else None
     else:
         return inp if isinstance(inp, int) else None
+
+
+def validate_email_address(emailaddress):
+    """
+    Checks if an email address is syntactically correct. Makes use
+    of the django email-validator for consistency.
+
+    Args:
+        emailaddress (str): Email address to validate.
+
+    Returns:
+        bool: If this is a valid email or not.
+
+    """
+    try:
+        django_validate_email(str(emailaddress))
+    except DjangoValidationError:
+        return False
+    except Exception:
+        logging.exception(f"Error while validating email.")
+        return False
+    else:
+        return True
+
+
+def crop(text, width=None, suffix="[...]"):
+    """
+    Crop text to a certain width, throwing away text from too-long
+    lines.
+
+    Args:
+        text (str): Text to crop.
+        width (int, optional): Width of line to crop, in characters.
+        suffix (str, optional): This is appended to the end of cropped
+            lines to show that the line actually continues. Cropping
+            will be done so that the suffix will also fit within the
+            given width. If width is too small to fit both crop and
+            suffix, the suffix will be dropped.
+
+    Returns:
+        text (str): The cropped text.
+
+    """
+    width = width if width else bartholos.GAME.settings.CLIENT_DEFAULT_WIDTH
+    ltext = len(text)
+    if ltext <= width:
+        return text
+    else:
+        lsuffix = len(suffix)
+        text = (
+            text[:width]
+            if lsuffix >= width
+            else "%s%s" % (text[: width - lsuffix], suffix)
+        )
+        return to_str(text)

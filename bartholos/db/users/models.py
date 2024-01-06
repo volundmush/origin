@@ -1,9 +1,13 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.contrib.contenttypes.fields import GenericRelation
 
 import mudforge
 from bartholos.db.autoproxy.models import AutoProxyObject
 from bartholos.db.users.managers import UserDBManager
+
+from bartholos.db.properties.attributes import AttributeHandler
+from mudforge.utils import lazy_property
 
 
 class UserDB(AutoProxyObject, AbstractUser):
@@ -21,7 +25,15 @@ class UserDB(AutoProxyObject, AbstractUser):
         HELPER = 1
         USER = 0
 
-    level = models.PositiveSmallIntegerField(choices=LevelChoices.choices, default=LevelChoices.USER)
+    level = models.PositiveSmallIntegerField(
+        choices=LevelChoices.choices, default=LevelChoices.USER
+    )
+
+    attr_data = GenericRelation("properties.Attribute", related_name="users")
+
+    @lazy_property
+    def attributes(self):
+        return AttributeHandler(self)
 
 
 class Host(models.Model):

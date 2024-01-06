@@ -1,0 +1,3 @@
+COMMODITIES = dict()
+
+OPTION_CLASSES = dict()

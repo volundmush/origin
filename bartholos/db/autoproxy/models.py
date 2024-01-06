@@ -148,7 +148,7 @@ class AutoProxyObject(SharedMemoryModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.set_proxy_class(proxy_path=self.proxy_path)
+        self.set_proxy_class(proxy_path=self.proxy_path, save=False)
 
     @classmethod
     def autoproxy_initial_setup(cls):
@@ -158,12 +158,17 @@ class AutoProxyObject(SharedMemoryModel):
         """
         pass
 
-    def set_proxy_class(self, proxy_path=None):
+    def set_proxy_class(self, proxy_path=None, save: bool = True):
         if proxy_path is None:
-            proxy_path = self.proxy_path
+            proxy_path = self.__defaultclasspath__
         try:
             self.__class__ = class_from_module(
-                proxy_path, defaultpaths=mudforge.GAME.settings.PROXY_PATHS.get(self.__proxy_family__, list()) if mudforge.GAME else []
+                proxy_path,
+                defaultpaths=mudforge.GAME.settings.PROXY_PATHS.get(
+                    self.__proxy_family__, list()
+                )
+                if mudforge.GAME
+                else [],
             )
         except Exception:
             logging.exception("Cannot import Proxy Class!")
@@ -174,7 +179,8 @@ class AutoProxyObject(SharedMemoryModel):
                 self.__class__ = self._meta.concrete_model or self.__class__
         finally:
             self.proxy_path = self.__class__.__module__ + "." + self.__class__.__name__
-            self.save(update_fields=["proxy_path"])
+            if save:
+                self.save(update_fields=["proxy_path"])
 
     class Meta:
         """
@@ -210,7 +216,8 @@ class AutoProxyObject(SharedMemoryModel):
         """
         if isinstance(proxy, str):
             proxy = [proxy] + [
-                "%s.%s" % (prefix, proxy) for prefix in mudforge.GAME.settings.PROXY_PATHS
+                "%s.%s" % (prefix, proxy)
+                for prefix in mudforge.GAME.settings.PROXY_PATHS
             ]
         else:
             proxy = [proxy.path]
@@ -222,7 +229,8 @@ class AutoProxyObject(SharedMemoryModel):
         else:
             # check parent chain
             return any(
-                hasattr(cls, "path") and cls.path in proxy for cls in self.__class__.mro()
+                hasattr(cls, "path") and cls.path in proxy
+                for cls in self.__class__.mro()
             )
 
     #
