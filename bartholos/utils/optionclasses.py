@@ -63,20 +63,15 @@ class BaseOption:
     def default(self):
         return self.default_value
 
-    @property
-    def value(self):
+    async def get_value(self):
         if not self.loaded:
-            self.load()
+            await self.load()
         if self.loaded:
             return self.value_storage
         else:
             return self.default
 
-    @value.setter
-    def value(self, value):
-        self.set(value)
-
-    def set(self, value, **kwargs):
+    async def set(self, value, **kwargs):
         """
         Takes user input and stores appropriately. This method allows for
         passing extra instructions into the validator.
@@ -90,9 +85,9 @@ class BaseOption:
         final_value = self.validate(value, **kwargs)
         self.value_storage = final_value
         self.loaded = True
-        self.save(**kwargs)
+        await self.save(**kwargs)
 
-    def load(self):
+    async def load(self):
         """
         Takes the provided save data, validates it, and gets this Option ready to use.
 
@@ -105,7 +100,7 @@ class BaseOption:
 
         try:
             self.value_storage = self.deserialize(
-                loadfunc(self.key, default=self.default_value, **load_kwargs)
+                await loadfunc(self.key, default=self.default_value, **load_kwargs)
             )
         except Exception:
             logging.exception("Error loading options.")
@@ -113,7 +108,7 @@ class BaseOption:
         self.loaded = True
         return True
 
-    def save(self, **kwargs):
+    async def save(self, **kwargs):
         """
         Stores the current value using `.handler.save_handler(self.key, value, **kwargs)`
         where `kwargs` are a combination of those passed into this function and
@@ -128,7 +123,7 @@ class BaseOption:
         value = self.serialize()
         save_kwargs = {**self.handler.save_kwargs, **kwargs}
         savefunc = self.handler.savefunc
-        savefunc(self.key, value=value, **save_kwargs)
+        await savefunc(self.key, value=value, **save_kwargs)
 
     def deserialize(self, save_data):
         """
@@ -175,7 +170,7 @@ class BaseOption:
         """
         return validatorfuncs.text(value, option_key=self.key, **kwargs)
 
-    def display(self, **kwargs) -> str:
+    async def display(self, **kwargs) -> str:
         """
         Renders the Option's value as something pretty to look at.
 
@@ -188,7 +183,8 @@ class BaseOption:
                 timedelta is pretty ugly).
 
         """
-        return self.value if isinstance(self.value, str) else str(self.value)
+        val = await self.get_value()
+        return val if isinstance(val, str) else str(val)
 
 
 # Option classes
@@ -217,13 +213,13 @@ class Boolean(BaseOption):
     def validate(self, value, **kwargs):
         return validatorfuncs.boolean(value, option_key=self.key, **kwargs)
 
-    def display(self, **kwargs):
-        if self.value:
+    async def display(self, **kwargs):
+        if self.get_value():
             return "1 - On/True"
         return "0 - Off/False"
 
     def serialize(self):
-        return self.value
+        return self.value_storage
 
     def deserialize(self, save_data):
         if not isinstance(save_data, bool):
@@ -235,8 +231,9 @@ class Color(BaseOption):
     def validate(self, value, **kwargs):
         return validatorfuncs.color(value, option_key=self.key, **kwargs)
 
-    def display(self, **kwargs):
-        return f"{self.value} - |{self.value}this|n"
+    async def display(self, **kwargs):
+        val = await self.get_value()
+        return f"{val} - |{val}this|n"
 
     def deserialize(self, save_data):
         if not save_data or len(strip_ansi(f"|{save_data}|n")) > 0:
@@ -352,5 +349,6 @@ class Style(BaseOption):
     def serialize(self):
         return str(self.value_storage)
 
-    def display(self, **kwargs):
-        return str(self.value)
+    async def display(self, **kwargs):
+        val = await self.get_value()
+        return str(val)

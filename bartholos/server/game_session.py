@@ -1,6 +1,12 @@
 import mudforge
-
+from mudforge.utils import lazy_property
 from mudforge.server.game_session import GameSession as BaseGameSession
+
+import bartholos
+from bartholos.utils.optionhandler import OptionHandler
+
+from rich.table import Table
+from rich.box import ASCII2
 
 from mudforge.game_session import (
     ClientHello,
@@ -82,6 +88,44 @@ class GameSession(BaseGameSession):
         parser_class = mudforge.CLASSES["login_parser"]
         parser = parser_class(self)
         await self.add_parser(parser)
+
+    @property
+    def options(self):
+        if user := self.user:
+            return user.options
+        return self._fake_options
+
+    @lazy_property
+    def _fake_options(self):
+        return OptionHandler(
+            self,
+            options_dict=mudforge.GAME.settings.OPTIONS_ACCOUNT_DEFAULT,
+        )
+
+    async def uses_screenreader(self) -> bool:
+        return await self.options.get("screenreader")
+
+    async def rich_table(self, *args, **kwargs) -> Table:
+        options = self.options
+        real_kwargs = {
+            "box": ASCII2,
+            "border_style": await options.get("border_style"),
+            "header_style": await options.get("header_style"),
+            "title_style": await options.get("header_style"),
+            "expand": True,
+        }
+        real_kwargs.update(kwargs)
+        if await self.uses_screenreader():
+            real_kwargs["box"] = None
+        return Table(*args, **real_kwargs)
+
+    async def login(self, user):
+        self.user = user
+        user.sessions.add(self)
+
+    async def logout(self):
+        self.user.sessions.remove(self)
+        self.user = None
 
 
 class SessionParser:

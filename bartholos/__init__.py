@@ -1,3 +1,5 @@
 COMMODITIES = dict()
 
 OPTION_CLASSES = dict()
+
+VALIDATORS = dict()

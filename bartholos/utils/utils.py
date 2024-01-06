@@ -2,10 +2,8 @@ import logging
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email as django_validate_email
-
+import mudforge
 from mudforge.utils import to_str
-
-import bartholos
 
 
 def dbref(inp, reqhash=True):
@@ -81,7 +79,7 @@ def crop(text, width=None, suffix="[...]"):
         text (str): The cropped text.
 
     """
-    width = width if width else bartholos.GAME.settings.CLIENT_DEFAULT_WIDTH
+    width = width if width else mudforge.GAME.settings.CLIENT_DEFAULT_WIDTH
     ltext = len(text)
     if ltext <= width:
         return text
@@ -93,3 +91,21 @@ def crop(text, width=None, suffix="[...]"):
             else "%s%s" % (text[: width - lsuffix], suffix)
         )
         return to_str(text)
+
+
+class SessionHandler:
+    def __init__(self, obj):
+        self.obj = obj
+        self.sessions = set()
+
+    def add(self, sess):
+        self.sessions.add(sess)
+
+    def remove(self, sess):
+        self.sessions.remove(sess)
+
+    def all(self):
+        return set(self.sessions)
+
+    def count(self):
+        return len(self.sessions)

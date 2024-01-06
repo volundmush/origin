@@ -110,7 +110,7 @@ class LoginParser(SessionParser):
 
     async def login(self):
         await self.close()
-        self.session.user = self.user
+        await self.session.login(self.user)
         main_menu_parser_class = mudforge.CLASSES["main_menu_parser"]
         main_menu = main_menu_parser_class(self.session)
         await self.session.add_parser(main_menu)

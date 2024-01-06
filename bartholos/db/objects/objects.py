@@ -1,10 +1,27 @@
+from mudforge.utils import lazy_property
+import mudforge
+import time
 from bartholos.db.objects.models import ObjectDB
 from bartholos.db.autoproxy.models import AutoProxyBase
 from bartholos.db.objects.managers import ObjectManager
+from bartholos.utils.optionhandler import OptionHandler
+
+from rich.table import Table
+from rich.box import ASCII2
 
 
 class DefaultObject(ObjectDB, metaclass=AutoProxyBase):
     objects = ObjectManager()
+
+    @classmethod
+    def find_dbref(cls, dbref: str):
+
+
+    @classmethod
+    def create(cls, name: str):
+        new_obj = cls(name=name, generation=int(time.time()))
+        new_obj.save()
+        return new_obj
 
     @property
     def zone(self) -> "DefaultZone | None":
@@ -62,6 +79,58 @@ class DefaultObject(ObjectDB, metaclass=AutoProxyBase):
 
     async def get_visible_inventory(self):
         return (x for x in await self.get_inventory() if await self.can_detect(x))
+
+    @property
+    def playview(self):
+        from bartholos.db.players.playviews import DefaultPlayview
+
+        return DefaultPlayview.objects.filter_family(id=self).first()
+
+    @property
+    def options(self):
+        if play := self.playview:
+            return play.options
+        return self._fake_options
+
+    @lazy_property
+    def _fake_options(self):
+        return OptionHandler(
+            self,
+            options_dict=mudforge.GAME.settings.OPTIONS_ACCOUNT_DEFAULT,
+        )
+
+    async def uses_screenreader(self) -> bool:
+        return await self.options.get("screenreader")
+
+    async def rich_table(self, *args, **kwargs) -> Table:
+        options = self.options
+        real_kwargs = {
+            "box": ASCII2,
+            "border_style": await options.get("border_style"),
+            "header_style": await options.get("header_style"),
+            "title_style": await options.get("header_style"),
+            "expand": True,
+        }
+        real_kwargs.update(kwargs)
+        if await self.uses_screenreader():
+            real_kwargs["box"] = None
+        return Table(*args, **real_kwargs)
+
+    async def can_play(self, session) -> bool:
+        return True
+
+    async def join_play(self, session):
+        from bartholos.db.players.playviews import DefaultPlayview
+
+        if not (play := self.playview):
+            play = DefaultPlayview.create(self, session.user)
+        await play.join_session(session)
+
+    @property
+    def playtime(self):
+        from bartholos.db.players.models import CharacterPlaytime
+
+        return CharacterPlaytime.objects.get_or_create(id=self)[0]
 
 
 class DefaultCharacter(DefaultObject):

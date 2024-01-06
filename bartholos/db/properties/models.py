@@ -2,6 +2,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from bartholos.db.idmapper.models import SharedMemoryModel
+import orjson
 
 
 class Attribute(SharedMemoryModel):

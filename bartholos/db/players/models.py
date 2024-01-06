@@ -5,6 +5,7 @@ from bartholos.db.players.managers import PlayviewDBManager
 from django.contrib.contenttypes.fields import GenericRelation
 from bartholos.db.properties.attributes import AttributeHandler
 from mudforge.utils import lazy_property
+from bartholos.utils.utils import SessionHandler
 
 
 class UserPlaytime(models.Model):
@@ -97,3 +98,7 @@ class PlayviewDB(AutoProxyObject):
     @lazy_property
     def attributes(self):
         return AttributeHandler(self)
+
+    @lazy_property
+    def sessions(self):
+        return SessionHandler(self)

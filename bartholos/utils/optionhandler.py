@@ -18,10 +18,10 @@ class InMemorySaveHandler:
     def __init__(self):
         self.storage = {}
 
-    def add(self, key, value=None, **kwargs):
+    async def add(self, key, value=None, **kwargs):
         self.storage[key] = value
 
-    def get(self, key, default=None, **kwargs):
+    async def get(self, key, default=None, **kwargs):
         return self.storage.get(key, default)
 
 
@@ -103,7 +103,7 @@ class OptionHandler:
             pass
         _SA(self, key, value)
 
-    def _load_option(self, key):
+    async def _load_option(self, key):
         """
         Loads option on-demand if it has not been loaded yet.
 
@@ -121,7 +121,7 @@ class OptionHandler:
         self.options[key] = loaded_option
         return loaded_option
 
-    def get(self, key, default=None, return_obj=False, raise_error=False):
+    async def get(self, key, default=None, return_obj=False, raise_error=False):
         """
         Retrieves an Option stored in the handler. Will load it if it doesn't exist.
 
@@ -142,10 +142,10 @@ class OptionHandler:
                 raise KeyError(_("Option not found!"))
             return default
         # get the options or load/recache it
-        op_found = self.options.get(key) or self._load_option(key)
-        return op_found if return_obj else op_found.value
+        op_found = self.options.get(key) or await self._load_option(key)
+        return op_found if return_obj else await op_found.get_value()
 
-    def set(self, key, value, **kwargs) -> "BaseOption":
+    async def set(self, key, value, **kwargs) -> "BaseOption":
         """
         Change an individual option.
 
@@ -172,11 +172,11 @@ class OptionHandler:
                 + _("Please be more specific.")
             )
         match = match[0]
-        op = self.get(match, return_obj=True)
-        op.set(value, **kwargs)
+        op = await self.get(match, return_obj=True)
+        await op.set(value, **kwargs)
         return op
 
-    def all(self, return_objs=False):
+    async def all(self, return_objs=False):
         """
         Get all options defined on this handler.
 
@@ -188,4 +188,6 @@ class OptionHandler:
                 or `{key: <Option>}` if `return_objs` is `True`.
 
         """
-        return [self.get(key, return_obj=return_objs) for key in self.options_dict]
+        return [
+            await self.get(key, return_obj=return_objs) for key in self.options_dict
+        ]
