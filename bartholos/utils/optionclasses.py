@@ -97,6 +97,8 @@ class BaseOption:
         """
         loadfunc = self.handler.loadfunc
         load_kwargs = self.handler.load_kwargs
+        if not loadfunc:
+            return False
 
         try:
             self.value_storage = self.deserialize(

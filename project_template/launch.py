@@ -4,7 +4,7 @@ import os
 if __name__ == "__main__":
     # set cwd to this file's folder here
     os.chdir(os.path.abspath(os.path.dirname(__file__)))
-    from bartholos.launcher import BartholosLauncher
+    from bartholos.launcher import Launcher
 
-    launcher = BartholosLauncher()
+    launcher = Launcher()
     launcher.run()

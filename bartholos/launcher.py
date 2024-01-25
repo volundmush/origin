@@ -6,7 +6,7 @@ import subprocess
 import shlex
 import signal
 
-os.environ["DJANGO_SETTINGS_MODULE"] = "game_code.django_settings"
+os.environ["DJANGO_SETTINGS_MODULE"] = "game.django_settings"
 
 from rich.traceback import install as install_tb
 
