@@ -58,18 +58,6 @@ class DefaultObject(ObjectDB, metaclass=AutoProxyBase):
     async def can_detect(self, obj: "DefaultObject") -> bool:
         return True
 
-    async def move_to_zone(self, zone, remove_kwargs=None, add_kwargs=None):
-        if self.in_zone:
-            await self.in_zone.remove_obj(self, **(remove_kwargs or dict()))
-        if zone:
-            await zone.add_obj(zone, **(add_kwargs or dict()))
-
-    async def get_inventory(self):
-        return (x.id for x in self.inventory.all())
-
-    async def get_visible_inventory(self):
-        return (x for x in await self.get_inventory() if await self.can_detect(x))
-
     @property
     def playview(self):
         from bartholos.db.players.playviews import DefaultPlayview
@@ -88,23 +76,6 @@ class DefaultObject(ObjectDB, metaclass=AutoProxyBase):
             self,
             options_dict=bartholos.SETTINGS.OPTIONS_ACCOUNT_DEFAULT,
         )
-
-    async def uses_screenreader(self) -> bool:
-        return await self.options.get("screenreader")
-
-    async def rich_table(self, *args, **kwargs) -> Table:
-        options = self.options
-        real_kwargs = {
-            "box": ASCII2,
-            "border_style": await options.get("border_style"),
-            "header_style": await options.get("header_style"),
-            "title_style": await options.get("header_style"),
-            "expand": True,
-        }
-        real_kwargs.update(kwargs)
-        if await self.uses_screenreader():
-            real_kwargs["box"] = None
-        return Table(*args, **real_kwargs)
 
     async def can_play(self, session) -> bool:
         return True

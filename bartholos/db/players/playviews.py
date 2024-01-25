@@ -19,23 +19,6 @@ class DefaultPlayview(PlayviewDB, metaclass=AutoProxyBase):
     def options(self):
         return self.user.options
 
-    async def rich_table(self, *args, **kwargs) -> Table:
-        options = self.options
-        real_kwargs = {
-            "box": ASCII2,
-            "border_style": await options.get("border_style"),
-            "header_style": await options.get("header_style"),
-            "title_style": await options.get("header_style"),
-            "expand": True,
-        }
-        real_kwargs.update(kwargs)
-        if await self.uses_screenreader():
-            real_kwargs["box"] = None
-        return Table(*args, **real_kwargs)
-
-    async def uses_screenreader(self) -> bool:
-        return await self.user.uses_screenreader()
-
     async def join_session(self, session):
         if not self.sessions.all():
             # this is the first session.
