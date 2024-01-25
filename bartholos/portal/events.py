@@ -6,7 +6,7 @@ async def RichText(session, event: str, data):
     if (txt := data.pop("text", None)) is not None:
         text = RealRichText(txt, **data)
         rendered = session.print(text)
-        await session.send_game_text(rendered)
+        await session.send_text(rendered)
 
 
 async def Text(session, event: str, data):
@@ -20,7 +20,7 @@ async def GMCP(session, event: str, data):
     await session.send_gmcp(cmd, data)
 
 
-async def Table(session, event: str, data):
+async def RichTable(session, event: str, data):
     args = list()
     if columns := data.pop("columns", None):
         args = columns

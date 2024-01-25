@@ -19,9 +19,9 @@ class MainMenuParser(SessionParser):
 
         for sess in user.sessions.all():
             # c = sess.capabilities
-            rows.append(("Unknwon", "Unknown", "Unknown"))
+            rows.append(("Unknown", "Unknown", "Unknown"))
         sess_table["rows"] = rows
-        self.session.send_event("Table", sess_table)
+        self.session.send_event("RichTable", sess_table)
 
         if owned := user.owned_characters.all():
             char_table = {
@@ -34,7 +34,7 @@ class MainMenuParser(SessionParser):
             for char in owned:
                 rows.append((str(char),))
             char_table["rows"] = rows
-            self.session.send_event("Table", char_table)
+            self.session.send_event("RichTable", char_table)
 
         cmd_table = {
             "title": "Commands",
@@ -47,7 +47,7 @@ class MainMenuParser(SessionParser):
             ],
         }
 
-        self.session.send_event("Table", cmd_table)
+        self.session.send_event("RichTable", cmd_table)
 
     async def parse(self, text: str):
         text = text.strip()
