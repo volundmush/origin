@@ -1,91 +1,103 @@
-import mudforge
-from mudforge.utils import lazy_property
-from mudforge.server.game_session import GameSession as BaseGameSession
-
+import asyncio
 import bartholos
+from bartholos.utils.utils import lazy_property
 from bartholos.utils.optionhandler import OptionHandler
 
-from rich.table import Table
-from rich.box import ASCII2
 
-from mudforge.game_session import (
-    ClientHello,
-    ClientCommand,
-    ClientUpdate,
-    ClientDisconnect,
-    ServerDisconnect,
-    ServerSendables,
-    ServerUserdata,
-    Sendable,
-    ServerMSSP,
-)
-
-
-class GameSession(BaseGameSession):
-    def __init__(self, ws, data):
-        super().__init__(ws, data)
+class GameSession:
+    def __init__(self, sid, sio):
+        self.sid = sid
+        self.sio = sio
+        # This contains arbitrary data sent by the server which will be sent on a reconnect.
+        self.outgoing_queue = asyncio.Queue()
+        self.parser_stack = list()
         self.user = None
         self.playview = None
-        self.parser_stack = list()
 
-    async def handle_priority_py(self, msg: ClientCommand) -> bool:
-        parser = mudforge.CLASSES["python_parser"](self)
+    async def handle_disconnect(self):
+        pass
+
+    async def handle_event(self, event: str, message):
+        match event:
+            case "Command":
+                await self.handle_incoming_command(
+                    message.get("data", "") if message is not None else ""
+                )
+
+    async def run(self):
+        await self.start()
+        while msg := await self.outgoing_queue.get():
+            event = msg.get("event", None)
+            data = msg.get("data", None)
+
+            if not event:
+                continue
+
+            await self.sio.emit(event, to=self.sid, data=data)
+
+    async def start(self):
+        await self.start_fresh()
+
+    async def handle_priority_py(self, command: str) -> bool:
+        parser = bartholos.CLASSES["python_parser"](self)
         await self.add_parser(parser)
         return True
 
-    async def handle_priority_quit(self, msg: ClientCommand) -> bool:
+    async def handle_priority_quit(self, command: str) -> bool:
         return True
 
-    async def handle_priority_command(self, msg: ClientCommand) -> bool:
+    async def handle_priority_command(self, command: str) -> bool:
         if self.parser_stack:
             top_parser = self.parser_stack[-1]
             if getattr(top_parser, "priority", False):
-                await top_parser.parse(msg.text)
+                await top_parser.parse(command)
                 return True
 
         if user := self.user:
             if user.is_superuser or user.level >= user.LevelChoices.DEVELOPER:
-                lower = msg.text.lower()
+                lower = command.lower()
                 if lower == "_py" or lower.startswith("_py "):
-                    return await self.handle_priority_py(msg)
+                    return await self.handle_priority_py(command)
 
-        if msg.text == "QUIT" or msg.text.startswith("QUIT "):
-            return await self.handle_priority_quit(msg)
+        if command == "QUIT" or command.startswith("QUIT "):
+            return await self.handle_priority_quit(command)
 
         return False
 
-    async def handle_incoming_command(self, msg: ClientCommand):
+    async def handle_incoming_command(self, command: str):
         # The IDLE command does nothing.
-        if msg.text == "IDLE" or msg.text.startswith("IDLE "):
+        if command == "IDLE" or command.startswith("IDLE "):
             return
 
         # A few special commands like _py and QUIT should be handled with care.
         # Along with Priority Parsers.
-        if await self.handle_priority_command(msg):
+        if await self.handle_priority_command(command):
             return
 
         # Next we check normal parsers, if they're set.
         if self.parser_stack:
             top_parser = self.parser_stack[-1]
-            await top_parser.parse(msg.text)
+            await top_parser.parse(command)
             return
 
         if self.playview:
-            await self.playview.parse(msg.text)
+            await self.playview.parse(command)
 
     async def add_parser(self, parser: "SessionParser"):
         self.parser_stack.append(parser)
         await parser.on_start()
 
     def send_text(self, text: str):
-        out = Sendable()
-        out.add_renderable(text)
-        msg = ServerSendables()
-        msg.add_sendable(out)
-        self.outgoing_queue.put_nowait(msg)
+        self.send_event("Text", {"data": text})
+
+    def send_gmcp(self, cmd: str, data=None):
+        self.send_event("GMCP", {"cmd": cmd, "data": data})
+
+    def send_event(self, event: str, data=None):
+        self.outgoing_queue.put_nowait({"event": event, "data": data})
 
     async def start_fresh(self):
-        parser_class = mudforge.CLASSES["login_parser"]
+        parser_class = bartholos.CLASSES["login_parser"]
         parser = parser_class(self)
         await self.add_parser(parser)
 
@@ -99,25 +111,11 @@ class GameSession(BaseGameSession):
     def _fake_options(self):
         return OptionHandler(
             self,
-            options_dict=mudforge.GAME.settings.OPTIONS_ACCOUNT_DEFAULT,
+            options_dict=bartholos.SETTINGS.OPTIONS_ACCOUNT_DEFAULT,
         )
 
     async def uses_screenreader(self) -> bool:
         return await self.options.get("screenreader")
-
-    async def rich_table(self, *args, **kwargs) -> Table:
-        options = self.options
-        real_kwargs = {
-            "box": ASCII2,
-            "border_style": await options.get("border_style"),
-            "header_style": await options.get("header_style"),
-            "title_style": await options.get("header_style"),
-            "expand": True,
-        }
-        real_kwargs.update(kwargs)
-        if await self.uses_screenreader():
-            real_kwargs["box"] = None
-        return Table(*args, **real_kwargs)
 
     async def login(self, user):
         self.user = user

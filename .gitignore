@@ -52,5 +52,4 @@ nosetests.xml
 .idea
 
 project_template/logs/*.log
-project_template/bartholos.run
-project_template/game_data/server.sqlite3
+project_template/data/server.sqlite3

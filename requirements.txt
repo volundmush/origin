@@ -1,4 +1,12 @@
-mudforge
+websockets
+aiodns
+aiohttp
+orjson
+rich
+aioquic
+python-socketio
+sanic[http3]
+sanic-jwt
 django >= 5.0, < 6.0
 tzdata >= 2023.4
 black >= 23.12.1

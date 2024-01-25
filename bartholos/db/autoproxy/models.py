@@ -37,8 +37,13 @@ from django.urls import reverse
 from django.utils.encoding import smart_str
 from django.utils.text import slugify
 
-import mudforge
-from mudforge.utils import import_from_module, inherits_from, is_iter, class_from_module
+import bartholos
+from bartholos.utils.utils import (
+    import_from_module,
+    inherits_from,
+    is_iter,
+    class_from_module,
+)
 
 from bartholos.db.idmapper.models import SharedMemoryModel, SharedMemoryModelBase
 from bartholos.db.autoproxy.managers import AutoProxyManager, AutoProxyObjectManager
@@ -164,10 +169,10 @@ class AutoProxyObject(SharedMemoryModel):
         try:
             self.__class__ = class_from_module(
                 proxy_path,
-                defaultpaths=mudforge.GAME.settings.PROXY_PATHS.get(
+                defaultpaths=bartholos.SETTINGS.AUTOPROXY_PATHS.get(
                     self.__proxy_family__, list()
                 )
-                if mudforge.GAME
+                if bartholos.SETTINGS
                 else [],
             )
         except Exception:
@@ -216,8 +221,7 @@ class AutoProxyObject(SharedMemoryModel):
         """
         if isinstance(proxy, str):
             proxy = [proxy] + [
-                "%s.%s" % (prefix, proxy)
-                for prefix in mudforge.GAME.settings.PROXY_PATHS
+                "%s.%s" % (prefix, proxy) for prefix in bartholos.SETTINGS.PROXY_PATHS
             ]
         else:
             proxy = [proxy.path]

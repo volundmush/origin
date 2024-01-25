@@ -1,4 +1,4 @@
-import mudforge
+import bartholos
 
 from .game_session import SessionParser
 from enum import IntEnum
@@ -111,7 +111,7 @@ class LoginParser(SessionParser):
     async def login(self):
         await self.close()
         await self.session.login(self.user)
-        main_menu_parser_class = mudforge.CLASSES["main_menu_parser"]
+        main_menu_parser_class = bartholos.CLASSES["main_menu_parser"]
         main_menu = main_menu_parser_class(self.session)
         await self.session.add_parser(main_menu)
 

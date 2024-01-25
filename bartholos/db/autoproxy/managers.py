@@ -9,7 +9,7 @@ import shlex
 from django.db.models import Count, ExpressionWrapper, F, FloatField, Q
 from django.db.models.functions import Cast
 
-from mudforge.utils import import_from_module, make_iter
+from bartholos.utils.utils import import_from_module, make_iter
 
 from bartholos.db.idmapper.manager import SharedMemoryManager
 
@@ -334,7 +334,8 @@ class AutoProxyManager(AutoProxyObjectManager):
 
         """
         paths = [self.model.path] + [
-            "%s.%s" % (cls.__module__, cls.__name__) for cls in self._get_subclasses(self.model)
+            "%s.%s" % (cls.__module__, cls.__name__)
+            for cls in self._get_subclasses(self.model)
         ]
         kwargs.update({"proxy_path__in": paths})
         return super().get(*args, **kwargs)
@@ -356,7 +357,8 @@ class AutoProxyManager(AutoProxyObjectManager):
         """
         # query, including all subclasses
         paths = [self.model.path] + [
-            "%s.%s" % (cls.__module__, cls.__name__) for cls in self._get_subclasses(self.model)
+            "%s.%s" % (cls.__module__, cls.__name__)
+            for cls in self._get_subclasses(self.model)
         ]
         kwargs.update({"proxy_path__in": paths})
         return super().filter(*args, **kwargs)
@@ -371,6 +373,7 @@ class AutoProxyManager(AutoProxyObjectManager):
 
         """
         paths = [self.model.path] + [
-            "%s.%s" % (cls.__module__, cls.__name__) for cls in self._get_subclasses(self.model)
+            "%s.%s" % (cls.__module__, cls.__name__)
+            for cls in self._get_subclasses(self.model)
         ]
         return super().all().filter(proxy_path__in=paths)

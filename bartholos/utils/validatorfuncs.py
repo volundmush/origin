@@ -15,8 +15,7 @@ import pytz as _pytz
 from django.utils.translation import gettext as _
 
 from bartholos.utils.ansi import strip_ansi
-from mudforge.utils import partial_match, utcnow
-from bartholos.utils.utils import validate_email_address
+from bartholos.utils.utils import validate_email_address, partial_match, utcnow
 
 _TZ_DICT = {str(tz): _pytz.timezone(tz) for tz in _pytz.common_timezones}
 

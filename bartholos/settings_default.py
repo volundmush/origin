@@ -1,25 +1,36 @@
-from mudforge.settings_default import *
 from collections import defaultdict
 
+# The game name
+NAME = "Bartholos"
 
-SERVER_HOOKS = {
-    "early_launch": [
-        "bartholos.server.hooks.setup_django",
-        "bartholos.server.hooks.import_validatorfuncs",
-        "bartholos.server.hooks.import_optionclasses",
-    ]
-}
+# The interface used by the Server to run its webserver/SocketIO on.
+SERVER_INTERFACE = "0.0.0.0"
+# The port used by the server for its webserver.
+SERVER_PORT = 8000
 
+# The interface used by the portal for its listening ports.
+PORTAL_INTERFACE = "0.0.0.0"
+# The port that the portal will use for telnet.
+PORTAL_TELNET = 7999
+
+PORTAL_URL_TO_GAME = "http://127.0.0.1:8000"
+
+# Classes that the server will use for various things.
+SERVER_CLASSES = dict()
+SERVER_CLASSES["core"] = "bartholos.server.core.Core"
 SERVER_CLASSES["game_session"] = "bartholos.server.game_session.GameSession"
 SERVER_CLASSES["python_parser"] = "bartholos.server.repl.PythonParser"
 SERVER_CLASSES["login_parser"] = "bartholos.server.login.LoginParser"
 SERVER_CLASSES["main_menu_parser"] = "bartholos.server.main_menu.MainMenuParser"
 
+PORTAL_CLASSES = dict()
+PORTAL_CLASSES["core"] = "bartholos.portal.portal.Core"
 
-PROXY_PATHS: dict[str, list[str]] = defaultdict(list)
+PORTAL_SERVICES = {"telnet": "bartholos.portal.telnet.TelnetService"}
 
+PORTAL_EVENT_HANDLER_MODULES = ["bartholos.portal.events"]
 
-COMMODITY_CURRENCY_KEY = "coin"
+AUTOPROXY_PATHS: dict[str, list[str]] = defaultdict(list)
 
 
 OPTIONS_ACCOUNT_DEFAULT = {
@@ -46,3 +57,5 @@ OPTION_CLASS_MODULES = ["bartholos.utils.optionclasses"]
 # Same-named functions in modules added later in this list will override those
 # added earlier.
 VALIDATOR_FUNC_MODULES = ["bartholos.utils.validatorfuncs"]
+
+LOG_DIR = "logs"

@@ -3,7 +3,7 @@ from bartholos.db.autoproxy.models import AutoProxyBase
 from bartholos.db.players.managers import PlayviewManager
 from rich.table import Table
 from rich.box import ASCII2
-from mudforge.utils import utcnow
+from bartholos.utils.utils import utcnow
 
 
 class DefaultPlayview(PlayviewDB, metaclass=AutoProxyBase):

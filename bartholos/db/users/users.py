@@ -1,11 +1,10 @@
-from mudforge.utils import lazy_property
-import mudforge
+import bartholos
 
 from bartholos.db.users.models import UserDB
 from bartholos.db.autoproxy.models import AutoProxyBase
 from bartholos.db.users.managers import UserManager
 from bartholos.utils.optionhandler import OptionHandler
-from bartholos.utils.utils import SessionHandler
+from bartholos.utils.utils import SessionHandler, lazy_property
 from rich.table import Table
 from rich.box import ASCII2
 
@@ -31,7 +30,7 @@ class DefaultUser(UserDB, metaclass=AutoProxyBase):
     def options(self):
         return OptionHandler(
             self,
-            options_dict=mudforge.GAME.settings.OPTIONS_ACCOUNT_DEFAULT,
+            options_dict=bartholos.SETTINGS.OPTIONS_ACCOUNT_DEFAULT,
             savefunc=self.attributes.add,
             loadfunc=self.attributes.get,
             save_kwargs={"category": "option"},

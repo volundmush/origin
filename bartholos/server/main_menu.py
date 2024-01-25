@@ -1,16 +1,4 @@
-from mudforge.game_session import (
-    ClientHello,
-    ClientCommand,
-    ClientUpdate,
-    ClientDisconnect,
-    ServerDisconnect,
-    ServerSendables,
-    ServerUserdata,
-    Sendable,
-    ServerMSSP,
-)
-
-from mudforge.utils import partial_match
+from bartholos.utils.utils import partial_match
 
 from .game_session import SessionParser
 from bartholos.db.players.playviews import DefaultPlayview
@@ -23,35 +11,43 @@ class MainMenuParser(SessionParser):
         await self.render()
 
     async def render(self):
-        sendables = ServerSendables()
-
-        sendable = Sendable()
-
         user = self.session.user
 
-        table = await self.session.rich_table("ID", "IP", "Client", title="Sessions")
+        sess_table = {"title": "Sessions", "columns": ["ID", "IP", "Client"]}
+
+        rows = list()
+
         for sess in user.sessions.all():
-            c = sess.capabilities
-            table.add_row(c.session_name, c.host_address, c.display_client_name())
-        sendable.add_renderable(table)
+            # c = sess.capabilities
+            rows.append(("Unknwon", "Unknown", "Unknown"))
+        sess_table["rows"] = rows
+        self.session.send_event("Table", sess_table)
 
         if owned := user.owned_characters.all():
-            table = await self.session.rich_table("Name", title="Characters")
+            char_table = {
+                "title": "Characters",
+                "columns": [
+                    "Name",
+                ],
+            }
+            rows = list()
             for char in owned:
-                table.add_row(str(char))
-            sendable.add_renderable(table)
+                rows.append((str(char),))
+            char_table["rows"] = rows
+            self.session.send_event("Table", char_table)
 
-        table = await self.session.rich_table(
-            "Command", "Syntax", "Help", title="Commands"
-        )
-        table.add_row("play", "play <name>", "Play a character.")
-        table.add_row("create", "create <name>", "Create new character.")
-        table.add_row("logout", "logout", "Logout and return to login screen.")
-        table.add_row("QUIT", "QUIT", "Quit the game.")
-        sendable.add_renderable(table)
+        cmd_table = {
+            "title": "Commands",
+            "columns": ["Command", "Syntax", "Help"],
+            "rows": [
+                ["play", "play <name>", "Play a character."],
+                ["create", "create <name>", "Create new character."],
+                ["logout", "logout", "Logout and return to login screen."],
+                ["QUIT", "QUIT", "Quit the game."],
+            ],
+        }
 
-        sendables.add_sendable(sendable)
-        await self.session.outgoing_queue.put(sendables)
+        self.session.send_event("Table", cmd_table)
 
     async def parse(self, text: str):
         text = text.strip()

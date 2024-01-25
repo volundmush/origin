@@ -340,6 +340,7 @@ class Style(BaseOption):
             return ValueError(f"Invalid Rich style: {err}")
         return style
 
+    @property
     def default(self):
         return _RichStyle.parse(self.default_value)
 

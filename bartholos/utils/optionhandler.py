@@ -1,6 +1,6 @@
 from django.utils.translation import gettext as _
 
-from mudforge.utils import partial_match
+from bartholos.utils.utils import partial_match
 
 import bartholos
 

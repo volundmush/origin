@@ -8,7 +8,7 @@ import os as _os
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": _os.path.join("game_data", "server.sqlite3"),
+        "NAME": _os.path.join("data", "server.sqlite3"),
         "USER": "",
         "PASSWORD": "",
         "HOST": "",
@@ -31,7 +31,6 @@ INSTALLED_APPS.extend(
         "bartholos.db.properties",
         "bartholos.db.users",
         "bartholos.db.players",
-        "bartholos.db.zones",
     ]
 )
 

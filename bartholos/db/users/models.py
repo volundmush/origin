@@ -2,12 +2,12 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericRelation
 
-import mudforge
+import bartholos
 from bartholos.db.autoproxy.models import AutoProxyObject
 from bartholos.db.users.managers import UserDBManager
 
 from bartholos.db.properties.attributes import AttributeHandler
-from mudforge.utils import lazy_property
+from bartholos.utils.utils import lazy_property
 
 
 class UserDB(AutoProxyObject, AbstractUser):

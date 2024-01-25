@@ -1,11 +1,9 @@
 from django.db import models
-from mudforge.utils import utcnow
 from bartholos.db.autoproxy.models import AutoProxyObject
 from bartholos.db.players.managers import PlayviewDBManager
 from django.contrib.contenttypes.fields import GenericRelation
 from bartholos.db.properties.attributes import AttributeHandler
-from mudforge.utils import lazy_property
-from bartholos.utils.utils import SessionHandler
+from bartholos.utils.utils import SessionHandler, utcnow, lazy_property
 
 
 class UserPlaytime(models.Model):

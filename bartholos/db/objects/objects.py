@@ -1,10 +1,10 @@
-from mudforge.utils import lazy_property
-import mudforge
 import time
+import bartholos
 from bartholos.db.objects.models import ObjectDB
 from bartholos.db.autoproxy.models import AutoProxyBase
 from bartholos.db.objects.managers import ObjectManager
 from bartholos.utils.optionhandler import OptionHandler
+from bartholos.utils.utils import lazy_property
 
 from rich.table import Table
 from rich.box import ASCII2
@@ -14,20 +14,10 @@ class DefaultObject(ObjectDB, metaclass=AutoProxyBase):
     objects = ObjectManager()
 
     @classmethod
-    def find_dbref(cls, dbref: str):
-
-
-    @classmethod
     def create(cls, name: str):
         new_obj = cls(name=name, generation=int(time.time()))
         new_obj.save()
         return new_obj
-
-    @property
-    def zone(self) -> "DefaultZone | None":
-        from bartholos.db.zones.zones import DefaultZone
-
-        return DefaultZone.objects.filter(id=self).first()
 
     def weight(self) -> float:
         return 0.0
@@ -96,7 +86,7 @@ class DefaultObject(ObjectDB, metaclass=AutoProxyBase):
     def _fake_options(self):
         return OptionHandler(
             self,
-            options_dict=mudforge.GAME.settings.OPTIONS_ACCOUNT_DEFAULT,
+            options_dict=bartholos.SETTINGS.OPTIONS_ACCOUNT_DEFAULT,
         )
 
     async def uses_screenreader(self) -> bool:

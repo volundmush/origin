@@ -3,12 +3,17 @@
 
 def run(name: str):
     import os
-    import mudforge
-    from mudforge.utils import import_from_module
+    import bartholos
+    from bartholos.utils.utils import class_from_module
 
-    import settings
+    from game import settings
 
-    core_class = import_from_module(settings.CORES[name])
+    bartholos.SETTINGS = settings
+
+    for k, v in settings.PORTAL_CLASSES.items():
+        bartholos.CLASSES[k] = class_from_module(v)
+
+    core_class = bartholos.CLASSES["core"]
 
     pidfile = f"{name}.pid"
 
@@ -18,7 +23,7 @@ def run(name: str):
 
         try:
             app = core_class(settings)
-            mudforge.GAME = app
+            bartholos.GAME = app
             app.run()
         except Exception as err:
             print(str(err))
