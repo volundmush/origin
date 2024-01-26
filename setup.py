@@ -28,12 +28,12 @@ def package_data():
     Make sure we get everything.
     """
     file_set = []
-    for root, dirs, files in os.walk("bartholos"):
+    for root, dirs, files in os.walk("origin"):
         for f in files:
             if ".git" in f.split(os.path.normpath(os.path.join(root, f))):
                 # Prevent the repo from being added.
                 continue
-            file_name = os.path.relpath(os.path.join(root, f), "bartholos")
+            file_name = os.path.relpath(os.path.join(root, f), "origin")
             file_set.append(file_name)
     return file_set
 
@@ -46,11 +46,11 @@ with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
 
 # setup the package
 setup(
-    name="bartholos",
+    name="origin",
     version="0.1.0",
     author="VolundMush",
     maintainer="VolundMush",
-    url="https://github.com/volundmush/bartholos",
+    url="https://github.com/volundmush/origin",
     description="",
     license="LGPL",
     long_description=long_description,
@@ -71,7 +71,7 @@ setup(
     ],
     python_requires=">=3.10",
     project_urls={
-        "Source": "https://github.com/volundmush/bartholos",
-        "Issue tracker": "https://github.com/volundmush/bartholos/issues",
+        "Source": "https://github.com/volundmush/origin",
+        "Issue tracker": "https://github.com/volundmush/origin/issues",
     },
 )

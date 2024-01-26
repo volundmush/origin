@@ -3,17 +3,17 @@
 
 def run(name: str):
     import os
-    import bartholos
-    from bartholos.utils.utils import class_from_module
+    import origin
+    from origin.utils.utils import class_from_module
 
     from game import settings
 
-    bartholos.SETTINGS = settings
+    origin.SETTINGS = settings
 
     for k, v in settings.PORTAL_CLASSES.items():
-        bartholos.CLASSES[k] = class_from_module(v)
+        origin.CLASSES[k] = class_from_module(v)
 
-    core_class = bartholos.CLASSES["core"]
+    core_class = origin.CLASSES["core"]
 
     pidfile = f"{name}.pid"
 
@@ -23,7 +23,7 @@ def run(name: str):
 
         try:
             app = core_class(settings)
-            bartholos.GAME = app
+            origin.GAME = app
             app.run()
         except Exception as err:
             print(str(err))

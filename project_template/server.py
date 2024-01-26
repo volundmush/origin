@@ -1,31 +1,25 @@
 import os
-import django
-
-os.environ["DJANGO_SETTINGS_MODULE"] = "game.django_settings"
-os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-django.setup()
-
 import socketio
 from sanic import Sanic, response
 
 # from sanic_jwt import Initialize
 
-import bartholos
-from bartholos.utils.utils import class_from_module
+import origin
+from origin.utils.utils import class_from_module
 
 from game import settings
 
-bartholos.SETTINGS = settings
+origin.SETTINGS = settings
 
 
 # Get the absolute path to the 'lib/webroot/' directory
 # webroot_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'lib', 'webroot'))
 
 sio = socketio.AsyncServer(async_mode="sanic", namespaces="*")
-bartholos.SOCKETIO = sio
+origin.SOCKETIO = sio
 
 app = Sanic(settings.NAME)
-bartholos.SANIC = app
+origin.SANIC = app
 # Initialize(app, claim_aud=settings.HOSTNAME, authenticate=account_manager.authenticate, retrieve_user=account_manager.retrieve_user)
 sio.attach(app)
 
@@ -34,19 +28,36 @@ sio.attach(app)
 # app.static('/static', os.path.join(webroot_path, 'static'))
 
 for k, v in settings.SERVER_CLASSES.items():
-    bartholos.CLASSES[k] = class_from_module(v)
+    origin.CLASSES[k] = class_from_module(v)
 
-core_class = bartholos.CLASSES["core"]
+origin.DB = origin.CLASSES["database"](
+    settings.ARANGO_URL,
+    settings.ARANGO_DATABASE,
+    settings.ARANGO_USERNAME,
+    settings.ARANGO_PASSWORD,
+)
+
+for k, v in settings.COLLECTION_MANAGERS.items():
+    origin.DB.managers[k] = class_from_module(v)(origin.DB)
+
+for k, v in settings.AUTOPROXY_CLASSES.items():
+    origin.AUTOPROXY[k] = class_from_module(v)
+
+core_class = origin.CLASSES["core"]
 core = core_class()
-bartholos.GAME = core
+origin.GAME = core
 
-sess_class = bartholos.CLASSES["game_session"]
+sess_class = origin.CLASSES["game_session"]
 
 
-# Link in the C++ game library.
 @app.before_server_start
-def init_game(app, loop):
-    core.initialize()
+async def init_db(app, loop):
+    await origin.DB.initialize()
+
+
+@app.before_server_start
+async def init_game(app, loop):
+    await core.initialize()
 
 
 app.add_task(core.run())
@@ -55,13 +66,13 @@ app.add_task(core.run())
 @sio.on("connect")
 async def connect_handler(sid, environ):
     new_conn = sess_class(sid, sio)
-    bartholos.CONNECTIONS[sid] = new_conn
+    origin.CONNECTIONS[sid] = new_conn
     app.add_task(new_conn.run(), name=f"Connection {sid}")
 
 
 @sio.on("disconnect")
 async def disconnect_handler(sid):
-    if conn := bartholos.CONNECTIONS.pop(sid, None):
+    if conn := origin.CONNECTIONS.pop(sid, None):
         await conn.handle_disconnect()
     else:
         print(f"disconnect_handler: No connection for sid {sid}")
@@ -69,7 +80,7 @@ async def disconnect_handler(sid):
 
 @sio.on("*")
 async def message_handler(event, sid, message):
-    if conn := bartholos.CONNECTIONS.get(sid, None):
+    if conn := origin.CONNECTIONS.get(sid, None):
         await conn.handle_event(event, message)
     else:
         print(f"message_handler: No connection for sid {sid}")
