@@ -162,13 +162,11 @@ class DatabaseManager:
         sess_manager = self.managers["session"]
         sess = await sess_manager.create_document(data=dict(), key=sid)
         origin.CONNECTIONS[sid] = sess
-        origin.SANIC.add_task(sess.run(), name=f"Connection {sid}")
 
     async def resume_sessions(self):
         sess_manager = self.managers["session"]
         async for sess in sess_manager.all_proxy():
             origin.CONNECTIONS[sess.sid] = sess
-            origin.SANIC.add_task(sess.run(), name=f"Connection {sess.sid}")
 
 
 class CollectionManager:

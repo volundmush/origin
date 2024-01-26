@@ -13,7 +13,6 @@ class SessionManager(CollectionManager):
 class Session(DocumentProxy):
     def __init__(self, id: str, dbmanager):
         super().__init__(id, dbmanager)
-        self.outgoing_queue = asyncio.Queue()
         self.parser_stack = list()
 
     @property
@@ -59,14 +58,6 @@ class Session(DocumentProxy):
 
     async def run(self):
         await self.start()
-        while msg := await self.outgoing_queue.get():
-            event = msg.get("event", None)
-            data = msg.get("data", None)
-
-            if not event:
-                continue
-
-            await self.sio.emit(event, to=self.sid, data=data)
 
     async def start(self):
         await self.start_fresh()
@@ -121,14 +112,14 @@ class Session(DocumentProxy):
         self.parser_stack.append(parser)
         await parser.on_start()
 
-    def send_text(self, text: str):
-        self.send_event("Text", {"data": text})
+    async def send_text(self, text: str):
+        await self.send_event("Text", {"data": text})
 
-    def send_gmcp(self, cmd: str, data=None):
-        self.send_event("GMCP", {"cmd": cmd, "data": data})
+    async def send_gmcp(self, cmd: str, data=None):
+        await self.send_event("GMCP", {"cmd": cmd, "data": data})
 
-    def send_event(self, event: str, data=None):
-        self.outgoing_queue.put_nowait({"event": event, "data": data})
+    async def send_event(self, event: str, data=None):
+        await self.sio.emit(event, to=self.sid, data=data)
 
     async def start_fresh(self):
         parser_class = origin.CLASSES["login_parser"]

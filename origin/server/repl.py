@@ -97,9 +97,9 @@ class PythonParser(SessionParser, AsynchronousConsole):
         self.py_buffer = ""
         self.session.send_event("ReprEcho", {"code": text})
 
-        t0 = time.time()
-        results = await self.push(text)
-        t1 = time.time()
+        t0 = time.perf_counter()
+        await self.push(text)
+        t1 = time.perf_counter()
         self.session.send_event(
             "ReprResult", {"code": self.py_buffer.rstrip(), "runtime": t1 - t0}
         )
