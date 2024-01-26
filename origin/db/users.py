@@ -10,7 +10,7 @@ class UserManager(CollectionManager):
     proxy = "user"
 
     async def find_user(self, username: str):
-        async for doc in await self.dbmanager.query_proxy(
+        async for doc in self.dbmanager.query_proxy(
             "FOR doc IN user FILTER LOWER(doc.username) == @username RETURN doc",
             username=username.lower(),
         ):
@@ -29,14 +29,14 @@ class UserManager(CollectionManager):
 
 class User(DocumentProxy):
     async def characters(self):
-        async for doc in await self.dbmanager.query_proxy(
-            "FOR doc IN object FILTER doc.user_id == @user RETURN doc", user=self.id
+        async for doc in self.dbmanager.query_proxy(
+            "FOR doc IN object FILTER doc.user == @user RETURN doc", user=self.id
         ):
             yield doc
 
     async def sessions(self):
-        async for doc in await self.dbmanager.query_proxy(
-            "FOR doc IN session FILTER doc.user_id == @user RETURN doc", user=self.id
+        async for doc in self.dbmanager.query_proxy(
+            "FOR doc IN session FILTER doc.user == @user RETURN doc", user=self.id
         ):
             if found := origin.CONNECTIONS.get(doc.sid, None):
                 yield found
@@ -57,5 +57,10 @@ class User(DocumentProxy):
         return CRYPT_CONTEXT.verify(password, password_hash)
 
     async def set_password(self, password: str):
-        hashed_password = CRYPT_CONTEXT.hash(password)
-        await self.patchDocument(password_hash=hashed_password)
+        data = {"password_hash": CRYPT_CONTEXT.hash(password) if password else None}
+        params = {"keepNull": "false"}
+        await self.patchDocument(data, params=params)
+
+    async def level(self) -> int:
+        doc = await self.getDocument()
+        return doc.get("level", 0)

@@ -6,7 +6,7 @@ import traceback
 
 from aioconsole.console import AsynchronousConsole
 
-from .game_session import SessionParser
+from .core import SessionParser
 
 
 class PythonParser(SessionParser, AsynchronousConsole):

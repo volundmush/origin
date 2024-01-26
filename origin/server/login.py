@@ -1,6 +1,6 @@
 import origin
 
-from .game_session import SessionParser
+from .core import SessionParser
 from enum import IntEnum
 
 
@@ -19,10 +19,6 @@ class LoginParser(SessionParser):
         self.password = None
         self.user = None
         self.state = LoginStatus.USERNAME
-
-        from origin.db.users.users import DefaultUser
-
-        self.users = DefaultUser
 
         self.state_map = {
             LoginStatus.USERNAME: self.handle_username,
@@ -78,25 +74,26 @@ class LoginParser(SessionParser):
         if not text:
             return
 
+        users = origin.DB.managers["user"]
+
         self.username = text
-        self.user = self.users.objects.filter_family(username__iexact=text).first()
+        self.user = await users.find_user(text)
         if self.user:
             self.state = LoginStatus.WELCOME_PASSWORD
         else:
             self.state = LoginStatus.USERNAME_CONFIRM
 
     async def create_user(self):
+        users = origin.DB.managers["user"]
+        count = await users.count()
         try:
-            if not self.users.objects.count():
-                self.user = self.users.objects.create_superuser(
-                    username=self.username, password=self.password
-                )
+            self.user = await users.create_user(
+                username=self.username, password=self.password
+            )
+            if not count:
+                await self.user.patchDocument(data={"level": 5})
                 self.session.send_text(
                     "FIRST USER TO BE CREATED. THIS USER IS A SUPERUSER."
-                )
-            else:
-                self.user = self.users.objects.create_user(
-                    username=self.username, password=self.password
                 )
         except Exception as err:
             self.session.send_text(str(err))
@@ -132,7 +129,7 @@ class LoginParser(SessionParser):
                 "Passwords may not contain leading or trailing whitespace."
             )
             return
-        if self.user.check_password(text):
+        if await self.user.authenticate(text):
             await self.login()
         else:
             self.session.send_text("Invalid credentials. Please try again. (or return)")

@@ -1,6 +1,8 @@
 import httpx
 import asyncio
 import origin
+import jwt
+import time
 
 
 class Cursor:
@@ -52,6 +54,7 @@ class DatabaseManager:
             base_url=f"{base_url}/_db/{dbname}", http2=True
         )
         self.jwt = None
+        self.jwt_decoded = None
 
     async def connect(self):
         login_data = {"username": self.username, "password": self.password}
@@ -59,10 +62,30 @@ class DatabaseManager:
         if result.status_code != 200:
             raise self.DatabaseException(f"Error connecting to Database: {result.text}")
         self.jwt = result.json().get("jwt")
+        self.jwt_decoded = jwt.decode(self.jwt, options={"verify_signature": False})
 
         result = await self.get("/_api/database/current")
         if result.status_code != httpx.codes.OK:
             raise self.DatabaseException("Database not accessible.")
+
+    async def initialize(self):
+        await self.connect()
+        for k, v in self.managers.items():
+            await v.initialize()
+        await self.resume_sessions()
+
+    async def run(self):
+        while True:
+            if not self.jwt_decoded:
+                await asyncio.sleep(10)
+                continue
+            exp = self.jwt_decoded.get("exp")
+            current = time.time()
+            remaining = exp - current - 120
+
+            if remaining > 0:
+                await asyncio.sleep(remaining)
+            await self.connect()
 
     async def request(self, method, url, **kwargs):
         """
@@ -135,6 +158,18 @@ class DatabaseManager:
         async for doc in self.query(query, **kwargs):
             yield await self.getProxy(doc)
 
+    async def create_session(self, sid, environ):
+        sess_manager = self.managers["session"]
+        sess = await sess_manager.create_document(data=dict(), key=sid)
+        origin.CONNECTIONS[sid] = sess
+        origin.SANIC.add_task(sess.run(), name=f"Connection {sid}")
+
+    async def resume_sessions(self):
+        sess_manager = self.managers["session"]
+        async for sess in sess_manager.all_proxy():
+            origin.CONNECTIONS[sess.sid] = sess
+            origin.SANIC.add_task(sess.run(), name=f"Connection {sess.sid}")
+
 
 class CollectionManager:
     name = None
@@ -202,14 +237,20 @@ class CollectionManager:
             data["_key"] = str(key)
         if self.proxy:
             data["proxy"] = self.proxy
-        result = await self.put(f"/_api/document/user", json=data)
+        params = {"returnNew": "true"}
+        result = await self.post(
+            f"/_api/document/{self.name}", json=data, params=params
+        )
         if result.status_code not in (201, 202):
             raise ValueError(f"Could not create {self.name}: {result.text}")
-        return (
-            (await self.dbmanager.getProxy(result.json()))
-            if self.proxy
-            else result.json()
-        )
+        new_doc = result.json().get("new")
+        return (await self.dbmanager.getProxy(new_doc)) if self.proxy else new_doc
+
+    async def count(self) -> int:
+        result = await self.get(f"/_api/collection/{self.name}/count")
+        if result.status_code == 200:
+            return result.json().get("count", 0)
+        return 0
 
 
 class DocumentProxy:
@@ -224,13 +265,13 @@ class DocumentProxy:
         return f"<{self.__class__.__name__} ({self.id})>"
 
     async def getDocument(self):
-        return await self.dbmanager.getDocument(self.id)
+        return await self.dbmanager.getDocument(self.id, proxy=False)
 
-    async def patchDocument(self, **kwargs):
-        await self.dbmanager.patch(f"/_api/document/{self.id}", json=kwargs)
+    async def patchDocument(self, data: dict, **kwargs):
+        await self.dbmanager.patch(f"/_api/document/{self.id}", json=data, **kwargs)
 
-    async def putDocument(self, data):
-        await self.dbmanager.put(f"/_api/document/{self.id}", json=data)
+    async def putDocument(self, data, **kwargs):
+        await self.dbmanager.put(f"/_api/document/{self.id}", json=data, **kwargs)
 
     async def deleteDocument(self):
         await self.dbmanager.delete(f"/_api/document/{self.id}")

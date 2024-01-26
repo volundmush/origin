@@ -47,8 +47,6 @@ core_class = origin.CLASSES["core"]
 core = core_class()
 origin.GAME = core
 
-sess_class = origin.CLASSES["game_session"]
-
 
 @app.before_server_start
 async def init_db(app, loop):
@@ -65,9 +63,7 @@ app.add_task(core.run())
 
 @sio.on("connect")
 async def connect_handler(sid, environ):
-    new_conn = sess_class(sid, sio)
-    origin.CONNECTIONS[sid] = new_conn
-    app.add_task(new_conn.run(), name=f"Connection {sid}")
+    await origin.DB.create_session(sid, environ)
 
 
 @sio.on("disconnect")

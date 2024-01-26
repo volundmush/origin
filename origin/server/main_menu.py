@@ -1,9 +1,7 @@
+import origin
 from origin.utils.utils import partial_match
 
-from .game_session import SessionParser
-from origin.db.players.playviews import DefaultPlayview
-from origin.db.players.models import UserOwner
-from origin.db.objects.objects import DefaultCharacter
+from .core import SessionParser
 
 
 class MainMenuParser(SessionParser):
@@ -11,29 +9,27 @@ class MainMenuParser(SessionParser):
         await self.render()
 
     async def render(self):
-        user = self.session.user
-
+        user = await self.session.user()
         sess_table = {"title": "Sessions", "columns": ["ID", "IP", "Client"]}
-
         rows = list()
 
-        for sess in user.sessions.all():
+        async for sess in user.sessions():
             # c = sess.capabilities
             rows.append(("Unknown", "Unknown", "Unknown"))
         sess_table["rows"] = rows
         self.session.send_event("RichTable", sess_table)
 
-        if owned := user.owned_characters.all():
-            char_table = {
-                "title": "Characters",
-                "columns": [
-                    "Name",
-                ],
-            }
-            rows = list()
-            for char in owned:
-                rows.append((str(char),))
-            char_table["rows"] = rows
+        char_table = {
+            "title": "Characters",
+            "columns": [
+                "Name",
+            ],
+        }
+        rows = list()
+        # async for char in user.characters():
+        #    rows.append((str(char),))
+        char_table["rows"] = rows
+        if rows:
             self.session.send_event("RichTable", char_table)
 
         cmd_table = {

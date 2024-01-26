@@ -18,7 +18,6 @@ PORTAL_URL_TO_GAME = "http://127.0.0.1:8000"
 # Classes that the server will use for various things.
 SERVER_CLASSES = dict()
 SERVER_CLASSES["core"] = "origin.server.core.Core"
-SERVER_CLASSES["game_session"] = "origin.server.game_session.GameSession"
 SERVER_CLASSES["python_parser"] = "origin.server.repl.PythonParser"
 SERVER_CLASSES["login_parser"] = "origin.server.login.LoginParser"
 SERVER_CLASSES["main_menu_parser"] = "origin.server.main_menu.MainMenuParser"
@@ -42,7 +41,10 @@ ARANGO_DATABASE = "origin"
 ARANGO_USERNAME = "origin"
 ARANGO_PASSWORD = "origin"
 
-AUTOPROXY_CLASSES = {"user": "origin.db.users.User"}
+AUTOPROXY_CLASSES = {
+    "user": "origin.db.users.User",
+    "session": "origin.db.sessions.Session",
+}
 
 
 OPTIONS_ACCOUNT_DEFAULT = {

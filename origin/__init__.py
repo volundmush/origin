@@ -9,6 +9,8 @@ HOOKS = defaultdict(list)
 
 AUTOPROXY = dict()
 
+EVENTS = dict()
+
 GAME = None
 SANIC = None
 SOCKETIO = None

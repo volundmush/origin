@@ -7,6 +7,7 @@ from .core import DocumentProxy, CollectionManager
 
 class SessionManager(CollectionManager):
     name = "session"
+    proxy = "session"
 
 
 class Session(DocumentProxy):
@@ -22,6 +23,29 @@ class Session(DocumentProxy):
     @lazy_property
     def sid(self):
         return self.id.split("/", 1)[1]
+
+    async def user(self):
+        doc = await self.getDocument()
+        if u := doc.get("user", None):
+            return await self.dbmanager.getDocument(u)
+
+    async def playview(self):
+        doc = await self.getDocument()
+        if v := doc.get("playview", None):
+            return await self.dbmanager.getDocument(v)
+
+    async def set_user(self, user: str):
+        data = {"user": user}
+        params = {"keepNull": "false"}
+        await self.patchDocument(data, params=params)
+
+    async def login(self, user):
+        await self.set_user(user.id)
+
+    async def set_playview(self, playview: str):
+        data = {"playview": playview}
+        params = {"keepNull": "false"}
+        await self.patchDocument(data, params=params)
 
     async def handle_disconnect(self):
         pass
@@ -62,8 +86,9 @@ class Session(DocumentProxy):
                 await top_parser.parse(command)
                 return True
 
-        if user := self.user:
-            if user.is_superuser or user.level >= user.LevelChoices.DEVELOPER:
+        if user := await self.user():
+            level = await user.level()
+            if level >= 5:
                 lower = command.lower()
                 if lower == "_py" or lower.startswith("_py "):
                     return await self.handle_priority_py(command)
@@ -89,8 +114,8 @@ class Session(DocumentProxy):
             await top_parser.parse(command)
             return
 
-        if self.playview:
-            await self.playview.parse(command)
+        if pv := await self.playview():
+            await pv.parse(command)
 
     async def add_parser(self, parser: "SessionParser"):
         self.parser_stack.append(parser)
@@ -109,27 +134,3 @@ class Session(DocumentProxy):
         parser_class = origin.CLASSES["login_parser"]
         parser = parser_class(self)
         await self.add_parser(parser)
-
-    @property
-    def options(self):
-        if user := self.user:
-            return user.options
-        return self._fake_options
-
-    @lazy_property
-    def _fake_options(self):
-        return OptionHandler(
-            self,
-            options_dict=origin.SETTINGS.OPTIONS_ACCOUNT_DEFAULT,
-        )
-
-    async def uses_screenreader(self) -> bool:
-        return await self.options.get("screenreader")
-
-    async def login(self, user):
-        self.user = user
-        user.sessions.add(self)
-
-    async def logout(self):
-        self.user.sessions.remove(self)
-        self.user = None
