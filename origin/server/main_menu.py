@@ -1,7 +1,7 @@
 import origin
 from origin.utils.utils import partial_match
 
-from .core import SessionParser
+from .parser import SessionParser
 
 
 class MainMenuParser(SessionParser):

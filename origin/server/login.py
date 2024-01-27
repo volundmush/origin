@@ -1,6 +1,6 @@
 import origin
 
-from .core import SessionParser
+from .parser import SessionParser
 from enum import IntEnum
 
 

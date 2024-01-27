@@ -1,21 +1,13 @@
-import time
-import origin
-
-from origin.utils.optionhandler import OptionHandler
-from origin.utils.utils import lazy_property
-
-from rich.table import Table
-from rich.box import ASCII2
+from .core import DocumentProxy, CollectionManager
 
 
-class DefaultObject(ObjectDB, metaclass=AutoProxyBase):
-    objects = ObjectManager()
+class ObjectManager(CollectionManager):
+    name = "object"
+    proxy = "object"
 
-    @classmethod
-    def create(cls, name: str):
-        new_obj = cls(name=name, generation=int(time.time()))
-        new_obj.save()
-        return new_obj
+
+class Object(DocumentProxy):
+    location_proxy = "location_inventory"
 
     def weight(self) -> float:
         return 0.0
@@ -37,7 +29,7 @@ class DefaultObject(ObjectDB, metaclass=AutoProxyBase):
         async for cmd in self.available_commands():
             if res := cmd.match(self, text):
                 command = cmd(self, orig_text, res, args)
-                await cmd.run()
+                await command.run()
 
     async def available_commands(self):
         for cmd in await self.sorted_commands():
@@ -53,48 +45,45 @@ class DefaultObject(ObjectDB, metaclass=AutoProxyBase):
 
         return out
 
-    async def can_detect(self, obj: "DefaultObject") -> bool:
+    async def can_detect(self, obj: "Object") -> bool:
         return True
-
-    @property
-    def playview(self):
-        from origin.db.players.playviews import DefaultPlayview
-
-        return DefaultPlayview.objects.filter_family(id=self).first()
-
-    @property
-    def options(self):
-        if play := self.playview:
-            return play.options
-        return self._fake_options
-
-    @lazy_property
-    def _fake_options(self):
-        return OptionHandler(
-            self,
-            options_dict=origin.SETTINGS.OPTIONS_ACCOUNT_DEFAULT,
-        )
 
     async def can_play(self, session) -> bool:
         return True
 
     async def join_play(self, session):
-        from origin.db.players.playviews import DefaultPlayview
-
-        if not (play := self.playview):
-            play = DefaultPlayview.create(self, session.user)
+        if not (play := await self.get_proxy("playview")):
+            playviews = self.dbmanager.managers["playview"]
+            user = await session.user()
+            data = {"_from": user.id, "_to": self.id}
+            play = await playviews.create_document(data=data)
+            await self.set_field("playview", play)
         await play.join_session(session)
 
-    @property
-    def playtime(self):
-        from origin.db.players.models import CharacterPlaytime
+    async def add_object_location(self, obj: "Object", proxy: str, **kwargs):
+        data = {"_from": obj.id, "_to": self.id, "proxy": proxy}
+        data.update(kwargs)
+        if loc := await obj.get_proxy("location"):
+            await obj.putDocument(data=data)
+            await loc.change_proxy(proxy, save=False)
+            return loc
+        else:
+            locmgr = self.dbmanager.managers["location"]
+            loc = await locmgr.create_document(data=data)
+            await obj.set_field("location", loc)
+            return loc
 
-        return CharacterPlaytime.objects.get_or_create(id=self)[0]
+    async def add_to_inventory(self, obj: "Object", **kwargs):
+        return await self.add_object_location(obj, "inventory_location", **kwargs)
+
+    async def add_to_equipment(self, obj: "Object", **kwargs):
+        return await self.add_object_location(obj, "equipment_location", **kwargs)
+
+    async def remove_from_location(self):
+        if loc := await self.get_proxy("location"):
+            await loc.deleteDocument()
+            await self.set_field("location")
 
 
-class DefaultCharacter(DefaultObject):
-    pass
-
-
-class DefaultPointOfInterest(DefaultObject):
-    pass
+class Grid(Object):
+    location_proxy = "location_grid"

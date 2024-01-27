@@ -72,7 +72,6 @@ class DatabaseManager:
         await self.connect()
         for k, v in self.managers.items():
             await v.initialize()
-        await self.resume_sessions()
 
     async def run(self):
         while True:
@@ -158,16 +157,6 @@ class DatabaseManager:
         async for doc in self.query(query, **kwargs):
             yield await self.getProxy(doc)
 
-    async def create_session(self, sid, environ):
-        sess_manager = self.managers["session"]
-        sess = await sess_manager.create_document(data=dict(), key=sid)
-        origin.CONNECTIONS[sid] = sess
-
-    async def resume_sessions(self):
-        sess_manager = self.managers["session"]
-        async for sess in sess_manager.all_proxy():
-            origin.CONNECTIONS[sess.sid] = sess
-
 
 class CollectionManager:
     name = None
@@ -233,7 +222,7 @@ class CollectionManager:
     async def create_document(self, data: dict, key=None):
         if key is not None:
             data["_key"] = str(key)
-        if self.proxy:
+        if self.proxy and "proxy" not in data:
             data["proxy"] = self.proxy
         params = {"returnNew": "true"}
         result = await self.post(
@@ -242,7 +231,9 @@ class CollectionManager:
         if result.status_code not in (201, 202):
             raise ValueError(f"Could not create {self.name}: {result.text}")
         new_doc = result.json().get("new")
-        return (await self.dbmanager.getProxy(new_doc)) if self.proxy else new_doc
+        return (
+            (await self.dbmanager.getProxy(new_doc)) if "proxy" in new_doc else new_doc
+        )
 
     async def count(self) -> int:
         result = await self.get(f"/_api/collection/{self.name}/count")
@@ -273,3 +264,26 @@ class DocumentProxy:
 
     async def deleteDocument(self):
         await self.dbmanager.delete(f"/_api/document/{self.id}")
+
+    async def set_field(self, name: str, value=None):
+        params = dict()
+        if value is None:
+            params["keepNull"] = "false"
+        elif isinstance(value, DocumentProxy):
+            value = value.id
+        await self.patchDocument(data={"name": value}, params=params)
+
+    async def get_field(self, name: str, default=None):
+        doc = await self.getDocument()
+        return doc.get(name, default)
+
+    async def get_proxy(self, name: str):
+        if field_id := await self.get_field(name):
+            return await self.dbmanager.getDocument(field_id, proxy=True)
+
+    async def change_proxy(self, name: str, save=True):
+        if not (proxy_class := origin.AUTOPROXY.get(name, None)):
+            raise ValueError(f"AutoProxy class {name} not found.")
+        self.__class__ = proxy_class
+        if save:
+            await self.set_field("proxy", name)

@@ -17,11 +17,17 @@ PORTAL_URL_TO_GAME = "http://127.0.0.1:8000"
 
 # Classes that the server will use for various things.
 SERVER_CLASSES = dict()
-SERVER_CLASSES["core"] = "origin.server.core.Core"
-SERVER_CLASSES["python_parser"] = "origin.server.repl.PythonParser"
-SERVER_CLASSES["login_parser"] = "origin.server.login.LoginParser"
-SERVER_CLASSES["main_menu_parser"] = "origin.server.main_menu.MainMenuParser"
+SERVER_CLASSES["core"] = "origin.server.core.ServerCore"
 SERVER_CLASSES["database"] = "origin.db.core.DatabaseManager"
+
+
+PARSERS = {
+    "login": "origin.server.login.LoginParser",
+    "main_menu": "origin.server.main_menu.MainMenuParser",
+}
+
+# SERVER_CLASSES["python_parser"] = "origin.server.repl.PythonParser"
+
 
 PORTAL_CLASSES = dict()
 PORTAL_CLASSES["core"] = "origin.portal.portal.Core"
@@ -33,6 +39,9 @@ PORTAL_EVENT_HANDLER_MODULES = ["origin.portal.events"]
 COLLECTION_MANAGERS = {
     "user": "origin.db.users.UserManager",
     "session": "origin.db.sessions.SessionManager",
+    "playview": "origin.db.playviews.PlayviewManager",
+    "object": "origin.db.objects.ObjectManager",
+    "location": "origin.db.locations.LocationManager",
 }
 
 # Do be sure to change these as needed.
@@ -44,6 +53,20 @@ ARANGO_PASSWORD = "origin"
 AUTOPROXY_CLASSES = {
     "user": "origin.db.users.User",
     "session": "origin.db.sessions.Session",
+    "playview": "origin.db.playviews.Playview",
+    "object": "origin.db.objects.Object",
+    "grid": "origin.db.objects.Grid",
+    "location": "origin.db.locations.Location",
+    "grid_location": "origin.db.locations.GridLocation",
+    "inventory_location": "origin.db.locations.InventoryLocation",
+    "equipment_location": "origin.db.locations.EquipmentLocation",
+}
+
+
+TASKS = {
+    "session_input": "origin.server.tasks.session_input",
+    "session_output": "origin.server.tasks.session_output",
+    "session_time": "origin.server.tasks.session_time",
 }
 
 
@@ -73,3 +96,30 @@ OPTION_CLASS_MODULES = ["origin.utils.optionclasses"]
 VALIDATOR_FUNC_MODULES = ["origin.utils.validatorfuncs"]
 
 LOG_DIR = "logs"
+
+
+PLAYER_START_LOCATION = ("object/eot", {"x": 0, "y": 0})
+
+ENSURE_OBJECTS = {
+    "object/eot": {
+        "proxy": "grid",
+        "name": "The End of Time",
+        "grid_description": "Your journeys have brought you to a place not meant for mortals. You wander over a quaint"
+        "and rustic collection of rectangular platforms linked by stairs and sometimes separated by"
+        "ornate wooden doors. The flooring is humble cobblestone, and lighting is provided by"
+        "a lone electric lamppost of forgotten yesteryear standing in the exact center of the main platform."
+        "Fanciful wrought iron fencing closes in the perimeters, offering some meager reassurance against"
+        "falling into the endless stream of pure nothing everything floats within. A timeless malaise"
+        "fills this forgotten place. Nothing happens here. Nothing can EVER happen here. But, from here,"
+        "surely you can reach the place you need to be.",
+        "grid": {
+            "max_x": 10,
+            "min_x": -10,
+            "max_y": 10,
+            "min_y": -10,
+            "default_tile": "Void",
+        },
+    }
+}
+
+TILE_MODULES = ["origin.assets.tiles"]
