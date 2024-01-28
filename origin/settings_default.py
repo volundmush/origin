@@ -35,6 +35,7 @@ PORTAL_CLASSES["core"] = "origin.portal.portal.Core"
 PORTAL_SERVICES = {"telnet": "origin.portal.telnet.TelnetService"}
 
 PORTAL_EVENT_HANDLER_MODULES = ["origin.portal.events"]
+SERVER_EVENT_HANDLER_MODULES = ["origin.db.events"]
 
 COLLECTION_MANAGERS = {
     "user": "origin.db.users.UserManager",
@@ -55,18 +56,13 @@ AUTOPROXY_CLASSES = {
     "session": "origin.db.sessions.Session",
     "playview": "origin.db.playviews.Playview",
     "object": "origin.db.objects.Object",
+    "player": "origin.db.objects.Player",
+    "npc": "origin.db.objects.NPC",
     "grid": "origin.db.objects.Grid",
     "location": "origin.db.locations.Location",
     "grid_location": "origin.db.locations.GridLocation",
     "inventory_location": "origin.db.locations.InventoryLocation",
     "equipment_location": "origin.db.locations.EquipmentLocation",
-}
-
-
-TASKS = {
-    "session_input": "origin.server.tasks.session_input",
-    "session_output": "origin.server.tasks.session_output",
-    "session_time": "origin.server.tasks.session_time",
 }
 
 
@@ -102,6 +98,7 @@ PLAYER_START_LOCATION = ("object/eot", {"x": 0, "y": 0})
 
 ENSURE_OBJECTS = {
     "object/eot": {
+        "_key": "eot",
         "proxy": "grid",
         "name": "The End of Time",
         "grid_description": "Your journeys have brought you to a place not meant for mortals. You wander over a quaint"
@@ -123,3 +120,8 @@ ENSURE_OBJECTS = {
 }
 
 TILE_MODULES = ["origin.assets.tiles"]
+
+
+TASKS = {
+    "session_input": {"interval": 0.0, "path": "origin.tasks.session.session_input"},
+}

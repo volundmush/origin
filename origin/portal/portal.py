@@ -200,7 +200,7 @@ class Core:
 
         for module in origin.SETTINGS.PORTAL_EVENT_HANDLER_MODULES:
             for k, v in callables_from_module(module).items():
-                origin.EVENTS[k] = v
+                origin.PORTAL_EVENTS[k] = v
 
         await self._pre_start()
 

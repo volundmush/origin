@@ -72,6 +72,18 @@ class DatabaseManager:
         await self.connect()
         for k, v in self.managers.items():
             await v.initialize()
+        await self.ensure_objects()
+
+    async def ensure_objects(self):
+        objects = self.managers["object"]
+        for k, v in origin.SETTINGS.ENSURE_OBJECTS.items():
+            failed = False
+            try:
+                obj = await self.getDocument(k)
+            except self.DatabaseException as e:
+                failed = True
+            if failed:
+                await objects.create_document(data=v)
 
     async def run(self):
         while True:
@@ -127,7 +139,7 @@ class DatabaseManager:
             raise self.DatabaseException(
                 f"Document {id} requested non-existent autoproxy {proxy_name}"
             )
-        return proxy_class(data, self)
+        return proxy_class(data.get("_id"), self)
 
     async def getDocument(self, id: str, proxy=True):
         result = await self.get(f"/_api/document/{id}")
@@ -243,15 +255,22 @@ class CollectionManager:
 
 
 class DocumentProxy:
-    def __init__(self, data, dbmanager: DatabaseManager):
-        self.id = data.get("_id")
+    def __init__(self, id, dbmanager: DatabaseManager):
+        self.id = id
         self.dbmanager = dbmanager
+
+    @property
+    def sio(self):
+        return origin.SOCKETIO
 
     def __str__(self):
         return self.id
 
     def __repr__(self):
         return f"<{self.__class__.__name__} ({self.id})>"
+
+    def __eq__(self, other):
+        return self.id == other.id
 
     async def getDocument(self):
         return await self.dbmanager.getDocument(self.id, proxy=False)
@@ -271,15 +290,21 @@ class DocumentProxy:
             params["keepNull"] = "false"
         elif isinstance(value, DocumentProxy):
             value = value.id
-        await self.patchDocument(data={"name": value}, params=params)
+        await self.patchDocument(data={name: value}, params=params)
 
     async def get_field(self, name: str, default=None):
-        doc = await self.getDocument()
-        return doc.get(name, default)
+        try:
+            doc = await self.getDocument()
+            return doc.get(name, default)
+        except Exception as err:
+            return default
 
     async def get_proxy(self, name: str):
         if field_id := await self.get_field(name):
-            return await self.dbmanager.getDocument(field_id, proxy=True)
+            try:
+                return await self.dbmanager.getDocument(field_id, proxy=True)
+            except Exception as err:
+                return None
 
     async def change_proxy(self, name: str, save=True):
         if not (proxy_class := origin.AUTOPROXY.get(name, None)):

@@ -89,7 +89,7 @@ class PortalSession:
         pass
 
     async def on_event(self, event: str, message):
-        if found := origin.EVENTS.get(event, None):
+        if found := origin.PORTAL_EVENTS.get(event, None):
             try:
                 await found(self, event, message)
             except Exception as e:
@@ -98,7 +98,7 @@ class PortalSession:
                 )
                 logging.exception(e)
         else:
-            logging.warning(f"Event {event} not found in {origin.EVENTS}")
+            logging.warning(f"Event {event} not found in {origin.PORTAL_EVENTS}")
 
     @lazy_property
     def console(self):

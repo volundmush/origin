@@ -10,10 +10,6 @@ class SessionManager(CollectionManager):
 
 
 class Session(DocumentProxy):
-    @property
-    def sio(self):
-        return origin.SOCKETIO
-
     @lazy_property
     def sid(self):
         return self.id.split("/", 1)[1]
@@ -26,46 +22,16 @@ class Session(DocumentProxy):
         pass
 
     async def handle_event(self, event: str, message):
-        match event:
-            case "Command":
-                await self.handle_incoming_command(
-                    message.get("data", "") if message is not None else ""
-                )
+        sess_input = await self.get_field("input", default=list())
+        sess_input.append([event, message])
+        await self.set_field("input", sess_input)
 
     async def start(self):
         await origin.PARSERS["login"].start(self)
 
-    async def handle_priority_quit(self, command: str) -> bool:
-        return True
-
-    async def handle_priority_command(self, command: str) -> bool:
-        if command == "QUIT" or command.startswith("QUIT "):
-            return await self.handle_priority_quit(command)
-
-        return False
-
-    async def handle_incoming_command(self, command: str):
-        # The IDLE command does nothing.
-        if command == "IDLE" or command.startswith("IDLE "):
-            return
-
-        # A few special commands like _py and QUIT should be handled with care.
-        # Along with Priority Parsers.
-        if await self.handle_priority_command(command):
-            return
-
-        # Next we check normal parsers, if they're set.
-        if (parser_name := await self.get_field("parser")) and (
-            parser := origin.PARSERS.get(parser_name, None)
-        ):
-            await parser.parse(self, command)
-            return
-
-        if pv := await self.get_proxy("playview"):
-            await pv.parse(command)
-            return
-
-        await self.send_text(f"Oops, cannot handle: {command}")
+    async def execute_event(self, event: str, message):
+        if func := origin.SERVER_EVENTS.get(event, None):
+            await func(self, message)
 
     async def send_text(self, text: str):
         await self.send_event("Text", {"data": text})

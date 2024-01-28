@@ -1,7 +1,5 @@
 import logging
-from mudforge.utils import classproperty
-
-from mudforge.game_session import ServerSendables, Sendable
+from origin.utils.utils import classproperty
 
 
 class Command:
@@ -30,7 +28,7 @@ class Command:
         return first_key
 
     @classmethod
-    async def available(cls, obj: "DefaultObject") -> bool:
+    async def available(cls, obj: "Object") -> bool:
         """
         Filter available commands. This can be used to restrict
         by permissions, race, whatever.
@@ -38,14 +36,14 @@ class Command:
         return True
 
     @classmethod
-    async def render_help(cls, obj: "DefaultObject" = None) -> str:
+    async def render_help(cls, obj: "Object" = None) -> str:
         """
         Render the help information for obj.
         """
         return getattr(cls, "__doc__", f"Help not implemented for {cls.name}, sorry.")
 
     @classmethod
-    async def match(cls, obj: "DefaultObject", text: str) -> str | None:
+    async def match(cls, obj: "Object", text: str) -> str | None:
         """
         Iterates through cls.keys and checks if the provided text matches any of them.
         If it does match, it returns the full key.
@@ -70,8 +68,7 @@ class Command:
         return False
 
     async def at_post_cmd(self):
-        if self.sendables.sendables and (playview := self.playview):
-            await playview.send(self.sendables)
+        pass
 
     async def run(self):
         try:
@@ -95,24 +92,12 @@ class Command:
         """
 
     async def handle_error(self, err: CommandException):
-        out = Sendable()
-        out.add_renderable(str(err))
-        self.sendables.add_sendable(out)
+        await self.caller.send_text(str(err))
 
     def __init__(
-        self,
-        caller: "DefaultObject",
-        cmdstring: str,
-        match_key: str,
-        args: str = "",
-        response_id=-1,
+        self, caller: "Object", cmdstring: str, match_key: str, args: str = ""
     ):
         self.caller = caller
         self.cmdstring = cmdstring
         self.match_key = match_key
         self.args = args
-        self.sendables = ServerSendables(response_id=response_id)
-
-    @property
-    def playview(self):
-        return self.caller.playview

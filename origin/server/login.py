@@ -4,156 +4,157 @@ from .parser import SessionParser
 from enum import IntEnum
 
 
-class LoginStatus(IntEnum):
-    USERNAME = 0
-    USERNAME_CONFIRM = 1
-    WELCOME_PASSWORD = 2
-    NEW_PASSWORD = 3
-    PASSWORD_CONFIRM = 4
-
-
 class LoginParser(SessionParser):
-    def __init__(self, sess, priority=False):
-        super().__init__(sess, priority)
-        self.username = None
-        self.password = None
-        self.user = None
-        self.state = LoginStatus.USERNAME
+    name = "login"
 
-        self.state_map = {
-            LoginStatus.USERNAME: self.handle_username,
-            LoginStatus.USERNAME_CONFIRM: self.handle_username_confirm,
-            LoginStatus.WELCOME_PASSWORD: self.handle_welcome_password,
-            LoginStatus.PASSWORD_CONFIRM: self.handle_password_confirm,
-            LoginStatus.NEW_PASSWORD: self.handle_new_password,
-        }
+    async def welcome_screen(self, session):
+        await session.send_text("HELLO WELCOME SCREEN HERE!")
 
-    async def welcome_screen(self):
-        self.session.send_text("HELLO WELCOME SCREEN HERE!")
+    async def on_start(self, session):
+        await self.welcome_screen(session)
+        await self.render(session)
 
-    async def on_start(self):
-        await self.welcome_screen()
-        await self.render()
+    async def clear(self, session):
+        await session.set_field("parser_state", value={"state": "username"})
 
-    def clear(self):
-        self.state = LoginStatus.USERNAME
-        self.username = None
-        self.password = None
-        self.user = None
-
-    async def render(self):
-        match self.state:
-            case LoginStatus.USERNAME:
-                self.session.send_text("Enter Username:")
-            case LoginStatus.USERNAME_CONFIRM:
-                self.session.send_text(
-                    f"You want your Username to be: {self.username}\r\nYes or No (or return):"
+    async def render(self, session):
+        state = await self.state(session)
+        match state.get("state", "username"):
+            case "username":
+                await session.send_text("Enter Username:")
+            case "username_confirm":
+                await session.send_text(
+                    f"You want your Username to be: {state.get('username')}\r\nYes or No (or return):"
                 )
-            case LoginStatus.WELCOME_PASSWORD:
-                self.session.send_text("Password (or return):")
-            case LoginStatus.NEW_PASSWORD:
-                self.session.send_text(
-                    f"Let's set a good password for {self.username}.\r\nPassword (or return):"
+            case "welcome":
+                await session.send_text("Password (or return):")
+            case "password":
+                await session.send_text(
+                    f"Let's set a good password for {state.get('username')}.\r\nPassword (or return):"
                 )
-            case LoginStatus.PASSWORD_CONFIRM:
-                self.session.send_text(
+            case "password_confirm":
+                await session.send_text(
                     f"Enter the password one more time to confirm.\r\nPassword (or return):"
                 )
 
-    async def parse(self, text: str):
+    async def parse(self, session, text: str):
         if text.lower() == "return":
-            self.clear()
-            await self.render()
+            await self.clear(session)
+            await self.render(session)
             return
 
-        await self.state_map[self.state](text)
-        await self.render()
+        state = await self.state(session)
+        match state.get("state", "username"):
+            case "username":
+                await self.handle_username(session, text)
+            case "username_confirm":
+                await self.handle_username_confirm(session, text)
+            case "welcome":
+                await self.handle_welcome_password(session, text)
+            case "password":
+                await self.handle_new_password(session, text)
+            case "password_confirm":
+                await self.handle_password_confirm(session, text)
 
-    async def handle_username(self, text: str):
+    async def handle_username(self, session, text: str):
         text = text.strip()
         if not text:
             return
 
         users = origin.DB.managers["user"]
-
-        self.username = text
-        self.user = await users.find_user(text)
-        if self.user:
-            self.state = LoginStatus.WELCOME_PASSWORD
+        if user := await users.find_user(text):
+            await self.set_state(session, "user", user.id)
+            await self.set_state(session, "state", value="welcome")
         else:
-            self.state = LoginStatus.USERNAME_CONFIRM
+            await self.set_state(session, "username_confirm")
+        await self.render(session)
 
-    async def create_user(self):
+    async def create_user(self, session):
         users = origin.DB.managers["user"]
         count = await users.count()
+        state = await self.state(session)
+        user = None
         try:
-            self.user = await users.create_user(
-                username=self.username, password=self.password
-            )
+            data = {
+                "username": state.get("username"),
+                "password": state.get("password"),
+            }
             if not count:
-                await self.user.patchDocument(data={"level": 5})
-                self.session.send_text(
-                    "FIRST USER TO BE CREATED. THIS USER IS A SUPERUSER."
-                )
+                data["level"] = 5
+
+            user = await users.create_user(**data)
+            if not count:
+                session.send_text("FIRST USER TO BE CREATED. THIS USER IS A SUPERUSER.")
         except Exception as err:
-            self.session.send_text(str(err))
-            self.clear()
+            await session.send_text(str(err))
+            await self.clear(session)
 
-        if self.user:
-            await self.login()
+        if user:
+            await self.login(session, user)
+        else:
+            await self.render(session)
 
-    async def on_close(self):
-        self.state = None
+    async def login(self, session, user):
+        await self.close(session)
+        await session.login(user)
 
-    async def login(self):
-        await self.close()
-        await self.session.login(self.user)
-        main_menu_parser_class = origin.CLASSES["main_menu_parser"]
-        main_menu = main_menu_parser_class(self.session)
-        await self.session.add_parser(main_menu)
-
-    async def handle_username_confirm(self, text: str):
+    async def handle_username_confirm(self, session, text: str):
         text = text.strip().lower()
         if not text:
             return
 
         match text:
             case "yes":
-                self.state = LoginStatus.NEW_PASSWORD
+                await self.set_state(session, "state", "password")
             case "no":
-                self.clear()
+                await self.clear(session)
+            case _:
+                await session.send_text("What? Try again...")
+        await self.render(session)
 
-    async def handle_welcome_password(self, text: str):
+    async def handle_welcome_password(self, session, text: str):
         if text.strip() != text:
-            self.session.send_text(
+            await session.send_text(
                 "Passwords may not contain leading or trailing whitespace."
             )
             return
-        if await self.user.authenticate(text):
-            await self.login()
+
+        state = await self.state(session)
+
+        user = await origin.DB.getDocument(state.get("user"))
+
+        if await user.authenticate(text):
+            await self.login(session, user)
         else:
-            self.session.send_text("Invalid credentials. Please try again. (or return)")
+            await session.send_text(
+                "Invalid credentials. Please try again. (or return)"
+            )
+            await self.render(session)
 
-    async def handle_password_confirm(self, text: str):
+    async def handle_password_confirm(self, session, text: str):
         if text.strip() != text:
-            self.session.send_text(
+            await session.send_text(
                 "Passwords may not contain leading or trailing whitespace."
             )
             return
 
-        if self.password != text:
-            self.session.send_text("Passwords don't match, try again.")
-            self.password = None
-            self.state = LoginStatus.NEW_PASSWORD
+        state = await self.state(session)
+        password = state.get("password")
+
+        if password != text:
+            await session.send_text("Passwords don't match, try again.")
+            await self.set_state(session, "password", value=None)
+            await self.set_state(session, "state", "password")
             return
 
-        await self.create_user()
+        await self.create_user(session)
 
-    async def handle_new_password(self, text: str):
+    async def handle_new_password(self, session, text: str):
         if text.strip() != text:
-            self.session.send_text(
+            await session.send_text(
                 "Passwords may not contain leading or trailing whitespace."
             )
             return
-        self.password = text
-        self.state = LoginStatus.PASSWORD_CONFIRM
+        await self.set_state(session, "state", "password_confirm")
+        await self.set_state(session, "password", text)
+        await self.render(session)

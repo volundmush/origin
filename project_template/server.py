@@ -11,5 +11,6 @@ if __name__ == "__main__":
         host=app.ctx.settings.SERVER_INTERFACE,
         port=app.ctx.settings.SERVER_PORT,
         single_process=True,
+        debug=True,
         workers=0,
     )

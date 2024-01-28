@@ -9,7 +9,8 @@ HOOKS = defaultdict(list)
 
 AUTOPROXY = dict()
 
-EVENTS = dict()
+PORTAL_EVENTS = dict()
+SERVER_EVENTS = dict()
 
 TASKS = dict()
 

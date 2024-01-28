@@ -16,7 +16,7 @@ class UserManager(CollectionManager):
         ):
             return doc
 
-    async def create_user(self, username: str, password: str, key=None):
+    async def create_user(self, username: str, password: str, key=None, **kwargs):
         if await self.find_user(username):
             raise ValueError(f"User {username} already exists.")
         try:
@@ -24,6 +24,7 @@ class UserManager(CollectionManager):
         except (TypeError, ValueError):
             raise ValueError(f"Non-hashable password, try another.")
         data = {"username": username, "password_hash": password_hash}
+        data.update(kwargs)
         return await self.create_document(data, key=key)
 
 
@@ -38,11 +39,7 @@ class User(DocumentProxy):
         async for doc in self.dbmanager.query_proxy(
             "FOR doc IN session FILTER doc.user == @user RETURN doc", user=self.id
         ):
-            if found := origin.CONNECTIONS.get(doc.sid, None):
-                yield found
-            else:
-                origin.CONNECTIONS[doc.sid] = doc
-                yield doc
+            yield doc
 
     async def playviews(self):
         async for doc in self.dbmanager.query_proxy(
