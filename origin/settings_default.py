@@ -19,6 +19,7 @@ PORTAL_URL_TO_GAME = "http://127.0.0.1:8000"
 SERVER_CLASSES = dict()
 SERVER_CLASSES["core"] = "origin.server.core.ServerCore"
 SERVER_CLASSES["database"] = "origin.db.core.DatabaseManager"
+SERVER_CLASSES["searcher"] = "origin.utils.search.Searcher"
 
 
 PARSERS = {
@@ -101,20 +102,32 @@ ENSURE_OBJECTS = {
         "_key": "eot",
         "proxy": "grid",
         "name": "The End of Time",
-        "grid_description": "Your journeys have brought you to a place not meant for mortals. You wander over a quaint"
-        "and rustic collection of rectangular platforms linked by stairs and sometimes separated by"
-        "ornate wooden doors. The flooring is humble cobblestone, and lighting is provided by"
-        "a lone electric lamppost of forgotten yesteryear standing in the exact center of the main platform."
-        "Fanciful wrought iron fencing closes in the perimeters, offering some meager reassurance against"
-        "falling into the endless stream of pure nothing everything floats within. A timeless malaise"
-        "fills this forgotten place. Nothing happens here. Nothing can EVER happen here. But, from here,"
-        "surely you can reach the place you need to be.",
+        "grid_description": "Your journeys have brought you to a place not meant for mortals. You wander over a "
+        "quaint and rustic collection of rectangular platforms linked by stairs and sometimes "
+        "separated by ornate wooden doors. The flooring is humble cobblestone, and lighting is "
+        "provided by a lone electric lamppost of forgotten yesteryear standing in the exact "
+        "center of the main platform. Fanciful wrought iron fencing closes in the perimeters, "
+        "offering some meager reassurance against falling into the endless stream of pure nothing "
+        "everything floats within. A timeless malaise fills this forgotten place. Nothing happens "
+        "here. Nothing can EVER happen here. But, from here, surely you can reach the place you "
+        "need to be.",
         "grid": {
             "max_x": 10,
             "min_x": -10,
             "max_y": 10,
             "min_y": -10,
             "default_tile": "Void",
+            "features": [
+                [(0, 0), {"tile": "Road"}],
+                [(0, 1), {"tile": "Road"}],
+                [(1, 0), {"tile": "Road"}],
+                [(1, 1), {"tile": "Road"}],
+                [(1, -1), {"tile": "Road"}],
+                [(0, -1), {"tile": "Road"}],
+                [(-1, -1), {"tile": "Road"}],
+                [(-1, 0), {"tile": "Road"}],
+                [(-1, 1), {"tile": "Road"}],
+            ],
         },
     }
 }
@@ -124,4 +137,10 @@ TILE_MODULES = ["origin.assets.tiles"]
 
 TASKS = {
     "session_input": {"interval": 0.0, "path": "origin.tasks.session.session_input"},
+    "simulation_commands": {
+        "interval": 0.0,
+        "path": "origin.tasks.simulation.simulation_commands",
+    },
 }
+
+COMMAND_SETS = {"informative": "origin.commands.informative.COMMANDS"}

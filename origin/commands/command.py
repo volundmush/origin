@@ -84,7 +84,7 @@ class Command:
             await self.at_post_cmd()
 
     async def func(self):
-        pass
+        await self.caller.send_text(f"The {self.name} command is not implemented.")
 
     async def parse(self):
         """
@@ -101,3 +101,6 @@ class Command:
         self.cmdstring = cmdstring
         self.match_key = match_key
         self.args = args
+
+    async def send_text(self, text: str):
+        await self.caller.send_text(text)

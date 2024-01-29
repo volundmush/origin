@@ -88,6 +88,7 @@ class ServerCore:
         out = (
             (self.settings.SERVER_CLASSES, origin.CLASSES),
             (self.settings.AUTOPROXY_CLASSES, origin.AUTOPROXY),
+            (self.settings.COMMAND_SETS, origin.COMMAND_SETS),
         )
         return out
 

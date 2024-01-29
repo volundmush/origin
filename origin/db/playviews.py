@@ -60,4 +60,9 @@ class Playview(DocumentProxy):
         await self.sio.emit(event, room=self.room, data=data)
 
     async def parse(self, command: str):
-        pass
+        """
+        Later this might handle an aliasing system, or some parsers,
+        but for now it just forwards the command.
+        """
+        obj = await self.get_proxy("_to")
+        await obj.queue_command(command)

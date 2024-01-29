@@ -27,3 +27,5 @@ OPTION_CLASSES = dict()
 VALIDATORS = dict()
 
 TILES = dict()
+
+COMMAND_SETS = dict()
